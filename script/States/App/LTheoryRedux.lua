@@ -660,7 +660,9 @@ function LimitTheoryRedux:onInput(data)
 
     -- Escape toggles the pause menu (Return to Game / Back to Main Menu / Exit).
     if Input:isPressed(ApplicationBindings.Escape) then
-        if self.pauseMenuOpen then
+        if self.pauseMenuOpen and UIPageGameplay:getCurrentView().name == "Settings" then
+            UIPageGameplay:setView("Paused")
+        elseif self.pauseMenuOpen then
             self:closePauseMenu()
         else
             self:openPauseMenu()

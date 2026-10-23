@@ -9,9 +9,15 @@ local UIRouter = require("UI.HmGui.UICore.UIRouter")
 local ResponsiveSize = require("Types.ResponsiveSize")
 local MusicPlayer = require("Shared.Audio.MusicPlayer")
 
+-- View to return to on Back: "Main" in the main menu, "Paused" in game
+local returnViewName = "Main"
+
 function SettingsView:onInput() end
 function SettingsView:onUpdate(dt) end
-function SettingsView:onViewOpen(isPageOpen) end
+function SettingsView:onViewOpen(isPageOpen)
+    local lastView = UIRouter:getCurrentPage():getLastView()
+    returnViewName = lastView and lastView.name or "Main"
+end
 function SettingsView:onViewClose(isPageClose) end
 
 local logo = Tex2D.Load("./res/images/LTR-logo-name.png")
@@ -24,10 +30,6 @@ local settingsCategoryNames = { { "GENERAL", "General" },
     { "CONTROLS",  "Controls" },
     { "KEYBINDS",  "Keybinds" } }
 
-local function switchToMainScreen()
-    UIRouter:getCurrentPage():setView("Main")
-end
-
 local function getLayoutContainerWidthPercentage() --todo: needs replacement with a more sophisticated layout system
     return GameState.render.resX / 1600 * 170 * 2 / GameState.render.resX
 end
@@ -36,8 +38,8 @@ local function getRemainingWidthPercentage()
     return 1 - getLayoutContainerWidthPercentage()
 end
 
-local function switchToMainScreen()
-    UIRouter:getCurrentPage():setView("Main")
+local function switchToPreviousView()
+    UIRouter:getCurrentPage():setView(returnViewName)
 end
 
 local function switchToGeneralSettings()
@@ -556,7 +558,7 @@ local settingsGrid = UILayout.Grid {
                             title = "Back",
                             size = ResponsiveSize(300, 60, true),
                             font = { name = "Unageo-Medium", size = 24 },
-                            callback = switchToMainScreen,
+                            callback = switchToPreviousView,
                             align = { AlignHorizontal.Center, AlignVertical.Center }
                         }
                     }

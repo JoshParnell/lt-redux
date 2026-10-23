@@ -16,6 +16,8 @@ local PausedView = require("UI.HmGui.Views.Gameplay.Paused")
 Gameplay:addViewToPage(PausedView)
 local SystemMapView = require("UI.HmGui.Views.Gameplay.SystemMap")
 Gameplay:addViewToPage(SystemMapView)
+local DockedView = require("UI.HmGui.Views.Gameplay.Docked")
+Gameplay:addViewToPage(DockedView)
 -- Shared with the main menu page; opened from the pause menu
 local SettingsView = require("UI.HmGui.Views.MainMenu.Settings")
 Gameplay:addViewToPage(SettingsView)

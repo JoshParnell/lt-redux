@@ -201,6 +201,39 @@ function PlayerController:cycleMode()
     self:setMode(self.cycleModes[nextIdx])
 end
 
+--- Orbit the camera around another entity until stopOrbitingEntity
+---@param entity Entity
+---@param distance number
+function PlayerController:orbitEntity(entity, distance)
+    local orbit = self.controllers[Enums.CameraMode.Orbit]
+    if not self.orbitRestore then
+        self.orbitRestore = {
+            mode        = self.mode,
+            distance    = orbit.distance,
+            minDistance = orbit.minDistance,
+            maxDistance = orbit.maxDistance,
+        }
+    end
+
+    orbit:setDistanceRange(distance * 0.5, distance * 4.0)
+    orbit:setDistance(distance)
+    orbit:setTarget(entity)
+    self:setMode(Enums.CameraMode.Orbit)
+end
+
+--- Return the orbit camera to the ship and restore the previous mode
+function PlayerController:stopOrbitingEntity()
+    local restore = self.orbitRestore
+    if not restore then return end
+    self.orbitRestore = nil
+
+    local orbit = self.controllers[Enums.CameraMode.Orbit]
+    orbit:setDistanceRange(restore.minDistance, restore.maxDistance)
+    orbit:setDistance(restore.distance)
+    orbit:setTarget(self.ship)
+    self:setMode(restore.mode)
+end
+
 --- Returns true if the player is currently piloting (flight input should be active)
 ---@return boolean
 function PlayerController:isPiloting()

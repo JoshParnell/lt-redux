@@ -147,6 +147,13 @@ Config.game = {
         avoidMargin       = 0.5,    -- clearance beyond an obstacle's radius, as a fraction of it
     },
 
+    -- Docking distances, in station bounding radii
+    docking = {
+        rangeMult      = 3.0,       -- dockable within this range
+        undockDistMult = 1.5,       -- ship exits this far out
+        cameraDistMult = 2.5,       -- docked camera orbit distance
+    },
+
     chaseCamera = {
         minRadius      = 0.5,    -- Min zoom (multiplier on ship radius)
         maxRadius      = 8.0,    -- Max zoom

@@ -5,6 +5,7 @@ return {
     TravelDrive       = require("Modules.Constructs.Components.TravelDriveComponent"),
     AutoPilot         = require("Modules.Constructs.Components.AutoPilotComponent"),
     Actions           = require("Modules.Constructs.Components.ActionsComponent"),
+    Docked            = require("Modules.Constructs.Components.DockedComponent"),
     ShipFlightControl = require("Modules.Constructs.Components.ShipFlightControlComponent"),
     Targetable        = require("Modules.Constructs.Components.TargetableComponent"),
     Turret            = require("Modules.Constructs.Components.TurretComponent"),

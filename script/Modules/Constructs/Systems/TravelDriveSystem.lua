@@ -18,7 +18,7 @@ function TravelDriveSystem:update(dt, shipEntity, readInput)
     if not shipEntity then return end
 
     local drive = shipEntity:get(ConstructComponents.TravelDrive)
-    if not drive then return end
+    if not drive or shipEntity:get(ConstructComponents.Docked) then return end
 
     local rbCmp = shipEntity:get(PhysicsComponents.RigidBody)
     if not rbCmp then return end

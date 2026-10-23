@@ -40,6 +40,14 @@ function OrbitCameraController:setDistance(distance)
     self.distance = Math.Clamp(distance, self.minDistance, self.maxDistance)
 end
 
+---@param minDistance number
+---@param maxDistance number
+function OrbitCameraController:setDistanceRange(minDistance, maxDistance)
+    self.minDistance = minDistance
+    self.maxDistance = maxDistance
+    self:setDistance(self.distance)
+end
+
 ---@param dt number
 function OrbitCameraController:onInput(dt)
     if not self.enabled or not Window:isFocused() then return end

@@ -51,6 +51,9 @@ local SystemMap3D = require('Modules.CelestialObjects.Systems.SystemMap3D')
 local MemoryReporter = require('Modules.Profiling.MemoryReporter')
 local ConstructManager = require('Modules.Constructs.Managers.ConstructManager')
 local StationGenerator = require('Modules.Constructs.Managers.Generators.StationGenerator')
+local DockingSystem = require('Modules.Constructs.Systems.DockingSystem')
+local ShipActions = require('Input.ActionBindings.ShipActions')
+local DrawEx = require('UI.DrawEx')
 
 -- Legacy (still needed for skybox generation)
 local Generator = require('Legacy.Systems.Gen.Generator')
@@ -251,6 +254,12 @@ end
 --- Close the in-game pause menu and resume the sim.
 function LimitTheoryRedux:closePauseMenu()
     self.pauseMenuOpen = false
+    if self:getDockedStation() then
+        UIPageGameplay:setView("Docked")
+        GameState:Unpause()
+        CursorManager:free()
+        return
+    end
     UIRouter:clearCurrentPage()
     GameState:Unpause()
     -- Re-apply the gameplay cursor state for the current camera mode
@@ -272,6 +281,7 @@ end
 
 --- Tear down the gameplay scene and return to the main menu.
 function LimitTheoryRedux:returnToMainMenu()
+    self:clearDockState()
     self:closePauseMenu()
 
     if self._simTunnel then
@@ -382,6 +392,8 @@ function LimitTheoryRedux:startGame(seed)
     -- Close the menu; in-game UI (HUD, labels) is drawn by the state's
     -- onRender through the rendering systems, not the HmGui pages.
     UIRouter:clearCurrentPage()
+
+    self:dockAt(self.stations[1])
 end
 
 ---@param seed integer
@@ -608,6 +620,56 @@ function LimitTheoryRedux:spawnStations()
     end
 end
 
+--- Dock the player at a station and open the docked screen.
+---@param station Entity
+function LimitTheoryRedux:dockAt(station)
+    local rbCmp = station and station:get(PhysicsComponents.RigidBody)
+    local stationRb = rbCmp and rbCmp:getRigidBody()
+    if not stationRb then return end
+
+    -- Camera first: switching to orbit mode re-shows the ship, which
+    -- DockingSystem then hides.
+    self.player:orbitEntity(station, stationRb:getBoundingRadius() * Config.game.docking.cameraDistMult)
+    if not DockingSystem:dock(self.playerShip, station) then
+        self.player:stopOrbitingEntity()
+        return
+    end
+
+    self.dockableStation = nil
+    self.player:setInputBlocked(true)
+    UIRouter:setCurrentPage("Gameplay")
+    UIPageGameplay:setView("Docked")
+end
+
+function LimitTheoryRedux:undock()
+    if not self:getDockedStation() then return end
+
+    DockingSystem:undock(self.playerShip)
+    UIRouter:clearCurrentPage()
+    self.player:setInputBlocked(false)
+    self.player:stopOrbitingEntity()
+end
+
+---@return Entity|nil
+function LimitTheoryRedux:getDockedStation()
+    return self.playerShip and DockingSystem:getDockedStation(self.playerShip)
+end
+
+---@return string
+function LimitTheoryRedux:getDockedStationName()
+    return self.stationNames and self.stationNames[self:getDockedStation()] or "Station"
+end
+
+--- Forget docking without undocking (teardown).
+function LimitTheoryRedux:clearDockState()
+    if self:getDockedStation() then
+        DockingSystem:forget(self.playerShip)
+        self.player:setInputBlocked(false)
+        self.player:stopOrbitingEntity()
+    end
+    self.dockableStation = nil
+end
+
 ---@param data EventData
 function LimitTheoryRedux:onRender(data)
     RenderCoreSystem:setExposureScale(UIRouter:shouldDimScene()
@@ -644,9 +706,16 @@ function LimitTheoryRedux:onRender(data)
         self:immediateUI(function()
             Gui:draw()
             LensFlareSystem:draw(self.starEntity, self.labeledEntities)
+            if self:getDockedStation() then return end
+
             if not self.hudHidden then
                 GameplayHUDSystem:draw(self.playerShip, self.player:getModeName(), self.player:isPiloting())
                 WorldLabelRenderSystem:draw(self.labeledEntities)
+            end
+
+            if self.dockableStation and self.mapMode == 0 then
+                DrawEx.TextAdditive('Unageo-Medium', "Press F to dock at " .. self.stationNames[self.dockableStation],
+                    16, 0, Window:height() * 0.7, Window:width(), 24, 0.9, 0.9, 0.9, 0.9, 0.5, 0.5)
             end
 
             local spawned = AsteroidFieldSystem:getSpawnedEntities()
@@ -707,6 +776,11 @@ function LimitTheoryRedux:onInput(data)
         end
     end
     if self.pauseMenuOpen then return end
+
+    if self:getDockedStation() then
+        if ShipActions.Undock:isPressed() then self:undock() end
+        return
+    end
 
     GeneralActions.CycleMapMode:update(dt)
     GeneralActions.AutoPilotToggle:update(dt)
@@ -775,6 +849,14 @@ function LimitTheoryRedux:onInput(data)
         self.player:setInputBlocked(false)
     end
 
+    local drive = self.playerShip:get(ConstructComponents.TravelDrive)
+    local driveIdle = not drive or drive:getState() == "idle"
+    self.dockableStation = driveIdle and DockingSystem:findDockable(self.playerShip, self.stations) or nil
+    if self.dockableStation and ShipActions.Dock:isPressed() then
+        self:dockAt(self.dockableStation)
+        return
+    end
+
     if GeneralActions.AutoPilotToggle:isPressed() then
         ActionSystem:clear(self.playerShip)
         if AutoPilotSystem:isActive(self.playerShip) then
@@ -820,6 +902,7 @@ end
 
 --- Rebuild the scene with a new seed.
 function LimitTheoryRedux:regenerate()
+    self:clearDockState()
     if self.universe then
         Registry:destroyEntity(self.universe, Enums.Registry.EntityDestroyMode.DestroyChildren)
     end
@@ -852,6 +935,8 @@ function LimitTheoryRedux:regenerate()
     self.mapState._dotCache = nil
     SystemMap:collectEntities(self.mapState, self.universe, self.playerShip)
     SystemMap3D:collectEntities(self.map3DState, self.universe, self.playerShip)
+
+    self:dockAt(self.stations[1])
 end
 
 function LimitTheoryRedux:soundOn()

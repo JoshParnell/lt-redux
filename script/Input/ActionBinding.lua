@@ -230,6 +230,14 @@ function ActionBinding:get()
     return self.value
 end
 
+--- Value from a single device's bindings, rather than the dominant one
+---@param device "keyboard"|"mouse"|"gamepad"
+---@return number
+function ActionBinding:getDevice(device)
+    if self.consumed then return 0.0 end
+    return self:readDeviceBindings(self.deviceBindings[device])
+end
+
 ---@return number
 function ActionBinding:getHoldTime()
     if self.consumed then return 0.0 end

@@ -99,6 +99,8 @@ Config.game = {
             invertYaw      = false,
             invertPitch    = false,
 
+            steerDeadzone  = 32,        -- px around screen center (chase mode)
+
             -- Reference values for other systems
             maxSpeedGame   = maxSpeedGame,
             maxSpeedReal   = maxSpeedReal,

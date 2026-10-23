@@ -39,6 +39,16 @@ local ShipActions = {
     }),
 
     ---@type ActionBinding
+    SteerHold = ActionBinding({
+        mouse = { Control.Single(Button.MouseRight) },
+    }),
+
+    ---@type ActionBinding
+    SteerToggle = ActionBinding({
+        keyboard = { Control.Single(Button.KeyboardX) },
+    }),
+
+    ---@type ActionBinding
     Boost = ActionBinding({
         keyboard = { Control.Single(Button.KeyboardShiftLeft), Control.Single(Button.KeyboardShiftRight) },
         gamepad = { Control.GamepadAxis(Button.GamepadLeftTrigger) },

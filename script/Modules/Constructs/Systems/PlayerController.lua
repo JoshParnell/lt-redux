@@ -22,6 +22,7 @@ local PlayerController = Class("PlayerController", function(self, shipEntity, co
     config = config or {}
     self.ship = shipEntity
     self.mode = Enums.CameraMode.Chase
+    self.steerLatched = false -- chase-mode mouse steering toggled on
     self.controllers = {}
     self.cameraEntities = {}
 
@@ -242,11 +243,18 @@ function PlayerController:update(dt)
     -- Manual flight only when piloting AND not on autopilot
     if self:isPiloting() and not AutoPilotSystem:isActive(self.ship) then
         local isFPS = (self.mode == Enums.CameraMode.FirstPerson)
+
+        if ShipActions.SteerToggle:isPressed() then
+            self.steerLatched = not self.steerLatched
+            Log.Info("Mouse steering: %s", self.steerLatched and "on" or "off")
+        end
+        local mouseAim = isFPS or self.steerLatched or ShipActions.SteerHold:isDown()
+
         local drive = self.ship:get(ConstructComponents.TravelDrive)
         if drive and drive:isActive() then
-            ShipFlightSystem:updateSteeringOnly(dt, self.ship, isFPS)
+            ShipFlightSystem:updateSteeringOnly(dt, self.ship, mouseAim, isFPS)
         else
-            ShipFlightSystem:update(dt, self.ship, isFPS, isFPS)
+            ShipFlightSystem:update(dt, self.ship, mouseAim, isFPS)
         end
     end
 end

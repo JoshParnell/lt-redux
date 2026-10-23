@@ -8,6 +8,74 @@ local ShipActions         = require("Input.ActionBindings.ShipActions")
 ---@class ShipFlightSystem
 local ShipFlightSystem = {}
 
+--- Normalized axis dead zones
+---@return number yaw, number pitch
+local function applyAxisDeadZones(yaw, pitch)
+    if math.abs(yaw)   < 0.004 then yaw   = 0 end
+    if math.abs(pitch) < 0.008 then pitch = 0 end
+    return yaw, pitch
+end
+
+--- Yaw/pitch from the mouse (when aiming) and gamepad stick, inversion applied
+---@param dt number
+---@param shipEntity Entity
+---@param mouseAim boolean Mouse controls ship rotation
+---@param useDelta boolean Use mouse delta (FPS) vs screen-relative (Chase)
+---@return number yaw, number pitch
+local function readRotationInput(dt, shipEntity, mouseAim, useDelta)
+    local cfg = Config.game.shipFlight
+    local yaw, pitch = 0, 0
+    if mouseAim then
+        if useDelta then
+            -- FPS mode: indirect aiming with accumulation and decay
+            local flightCtrl = shipEntity:get(ConstructComponents.ShipFlightControl)
+            if flightCtrl then
+                local delta = Input:mouse():delta()
+                local sx = Window:width()
+                local sy = Window:height()
+                local sens = 1.0
+
+                local tYaw = Math.Clamp(
+                    flightCtrl:getTargetYaw() + delta.x / sx * sens, -0.8, 0.8)
+                local tPitch = Math.Clamp(
+                    flightCtrl:getTargetPitch() - delta.y / sy * sens, -0.8, 0.8)
+
+                yaw, pitch = applyAxisDeadZones(tYaw, tPitch)
+
+                -- Decay toward center when mouse stops
+                flightCtrl:setTargetYaw(tYaw * (1.0 - 4.0 * dt))
+                flightCtrl:setTargetPitch(tPitch * (1.0 - 4.0 * dt))
+            end
+        else
+            -- Chase mode: screen-relative mouse position (legacy style).
+            -- Circular dead zone, ramping up from its edge
+            local mx = ShipActions.Yaw:getDevice("mouse")
+            local my = ShipActions.Pitch:getDevice("mouse")
+            local hw = 0.5 * Window:width()
+            local hh = 0.5 * Window:height()
+            local r  = math.sqrt((mx * hw) ^ 2 + (my * hh) ^ 2)
+            if r > cfg.steerDeadzone then
+                local s = (r - cfg.steerDeadzone) / r
+                yaw   = mx * s
+                pitch = my * s
+            end
+        end
+    end
+
+    -- Gamepad stick always steers
+    local padYaw, padPitch = applyAxisDeadZones(
+        ShipActions.Yaw:getDevice("gamepad"),
+        ShipActions.Pitch:getDevice("gamepad"))
+    if math.abs(padYaw)   > math.abs(yaw)   then yaw   = padYaw   end
+    if math.abs(padPitch) > math.abs(pitch) then pitch = padPitch end
+
+    -- Config inversion
+    if cfg.invertYaw   then yaw   = -yaw end
+    if cfg.invertPitch then pitch = -pitch end
+
+    return yaw, pitch
+end
+
 --- Update ship from input.
 ---@param dt number
 ---@param shipEntity Entity
@@ -36,44 +104,7 @@ function ShipFlightSystem:update(dt, shipEntity, mouseAim, useDelta)
         boost = 0
     end
 
-    -- Read rotation input
-    local yaw   = 0
-    local pitch = 0
-    if mouseAim then
-        if useDelta then
-            -- FPS mode: indirect aiming with accumulation and decay
-            local flightCtrl = shipEntity:get(ConstructComponents.ShipFlightControl)
-            if flightCtrl then
-                local delta = Input:mouse():delta()
-                local sx = Window:width()
-                local sy = Window:height()
-                local sens = 1.0
-
-                local tYaw = Math.Clamp(
-                    flightCtrl:getTargetYaw() + delta.x / sx * sens, -0.8, 0.8)
-                local tPitch = Math.Clamp(
-                    flightCtrl:getTargetPitch() - delta.y / sy * sens, -0.8, 0.8)
-
-                yaw   = tYaw
-                pitch = tPitch
-
-                -- Decay toward center when mouse stops
-                flightCtrl:setTargetYaw(tYaw * (1.0 - 4.0 * dt))
-                flightCtrl:setTargetPitch(tPitch * (1.0 - 4.0 * dt))
-            end
-        else
-            -- Chase mode: screen-relative mouse position (legacy style)
-            yaw   = ShipActions.Yaw:get()
-            pitch = ShipActions.Pitch:get()
-        end
-        -- Dead zones
-        if math.abs(yaw)   < 0.004 then yaw   = 0 end
-        if math.abs(pitch) < 0.008 then pitch = 0 end
-
-        -- Config inversion
-        if cfg.invertYaw   then yaw   = -yaw end
-        if cfg.invertPitch then pitch = -pitch end
-    end
+    local yaw, pitch = readRotationInput(dt, shipEntity, mouseAim, useDelta)
 
     -- Boost (matches legacy: 1.0 + 2.0 * boost)
     local mult = 1.0 + 2.0 * boost
@@ -106,8 +137,9 @@ end
 --- Reduced steering only (for travel drive — no thrust, slower rotation)
 ---@param dt number
 ---@param shipEntity Entity
----@param mouseAim boolean
-function ShipFlightSystem:updateSteeringOnly(dt, shipEntity, mouseAim)
+---@param mouseAim boolean Mouse controls ship rotation
+---@param useDelta boolean Use mouse delta (FPS) vs screen-relative (Chase)
+function ShipFlightSystem:updateSteeringOnly(dt, shipEntity, mouseAim, useDelta)
     if not shipEntity then return end
 
     local rbCmp = shipEntity:get(PhysicsComponents.RigidBody)
@@ -117,15 +149,7 @@ function ShipFlightSystem:updateSteeringOnly(dt, shipEntity, mouseAim)
 
     local cfg = Config.game.shipFlight
     local roll = ShipActions.Roll:get()
-    local yaw, pitch = 0, 0
-    if mouseAim then
-        local delta = Input:mouse():delta()
-        local sx, sy = Window:width(), Window:height()
-        yaw   = Math.Clamp(delta.x / sx * 4.0, -1.0, 1.0)
-        pitch = Math.Clamp(-delta.y / sy * 4.0, -1.0, 1.0)
-        if math.abs(yaw)   < 0.0001 then yaw   = 0 end
-        if math.abs(pitch) < 0.0001 then pitch = 0 end
-    end
+    local yaw, pitch = readRotationInput(dt, shipEntity, mouseAim, useDelta)
 
     -- Reduced torque at high speed (10% of normal)
     local steerFactor = 0.1

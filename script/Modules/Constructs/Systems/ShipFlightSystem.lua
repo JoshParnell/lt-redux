@@ -33,7 +33,7 @@ local function readRotationInput(dt, shipEntity, mouseAim, useDelta)
                 local delta = Input:mouse():delta()
                 local sx = Window:width()
                 local sy = Window:height()
-                local sens = 1.0
+                local sens = GameState.input.steerSensitivity
 
                 local tYaw = Math.Clamp(
                     flightCtrl:getTargetYaw() + delta.x / sx * sens, -0.8, 0.8)
@@ -49,15 +49,17 @@ local function readRotationInput(dt, shipEntity, mouseAim, useDelta)
         else
             -- Chase mode: screen-relative mouse position (legacy style).
             -- Circular dead zone, ramping up from its edge
+            local deadzone = GameState.input.steerDeadzone
             local mx = ShipActions.Yaw:getDevice("mouse")
             local my = ShipActions.Pitch:getDevice("mouse")
             local hw = 0.5 * Window:width()
             local hh = 0.5 * Window:height()
             local r  = math.sqrt((mx * hw) ^ 2 + (my * hh) ^ 2)
-            if r > cfg.steerDeadzone then
-                local s = (r - cfg.steerDeadzone) / r
-                yaw   = mx * s
-                pitch = my * s
+            if r > deadzone then
+                -- Clamped so sensitivity shortens cursor travel, never exceeds hull torque
+                local s = (r - deadzone) / r * GameState.input.steerSensitivity
+                yaw   = Math.Clamp(mx * s, -1.0, 1.0)
+                pitch = Math.Clamp(my * s, -1.0, 1.0)
             end
         end
     end

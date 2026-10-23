@@ -7,7 +7,9 @@ GameState = {
 }
 
 GameState.input = {
-    invertPitch = false,
+    invertPitch      = false,
+    steerSensitivity = Config.game.shipFlight.steerSensitivity,
+    steerDeadzone    = Config.game.shipFlight.steerDeadzone,
 }
 
 GameState.debug = {

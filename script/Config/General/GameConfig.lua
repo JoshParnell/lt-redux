@@ -99,7 +99,9 @@ Config.game = {
             invertYaw      = false,
             invertPitch    = false,
 
-            steerDeadzone  = 32,        -- px around screen center (chase mode)
+            -- Mouse steering defaults; user values live in GameState.input
+            steerSensitivity = 1.0,
+            steerDeadzone    = 32,      -- px around screen center (chase mode)
 
             -- Reference values for other systems
             maxSpeedGame   = maxSpeedGame,

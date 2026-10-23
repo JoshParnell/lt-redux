@@ -21,6 +21,7 @@ local settingsCategoryNames = { { "GENERAL", "General" },
     { "AUDIO",     "Audio" },
     { "GRAPHICS",  "Graphics" },
     { "INTERFACE", "Interface" },
+    { "CONTROLS",  "Controls" },
     { "KEYBINDS",  "Keybinds" } }
 
 local function switchToMainScreen()
@@ -55,8 +56,12 @@ local function switchToInterfaceSettings()
     settingsCategory = 4
 end
 
-local function switchToKeybindSettings()
+local function switchToControlsSettings()
     settingsCategory = 5
+end
+
+local function switchToKeybindSettings()
+    settingsCategory = 6
 end
 
 local function getSettingsCategoryText()
@@ -362,6 +367,82 @@ local function settingsInterface()
 end
 
 ---@return UIComponentContainer
+local function settingsControls()
+    return UIComponent.Container {
+        align = { AlignHorizontal.Stretch, AlignVertical.Stretch },
+        childrenAlign = { AlignHorizontal.Center, AlignVertical.Center },
+        padding = { 0, 0 },
+        margin = { 80, 0 },
+        widthInLayout = getRemainingWidthPercentage,
+        layoutType = GuiLayoutType.Vertical,
+        contents = {
+            UILayout.Grid {
+                align = { AlignHorizontal.Stretch, AlignVertical.Center },
+                stackDirection = GuiLayoutType.Horizontal,
+                contents = {
+                    UILayout.Grid {
+                        align = { AlignHorizontal.Center, AlignVertical.Center },
+                        widthInLayout = 0.35, -- 35% of the parent grid width
+                        layoutType = GuiLayoutType.Vertical,
+                        contents = {
+                            UIComponent.Text {
+                                text = "Steering Sensitivity",
+                                size = 24,
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Left, AlignVertical.Center }
+                            },
+                            UIComponent.Text {
+                                text = "Steering Dead Zone",
+                                size = 24,
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Left, AlignVertical.Center }
+                            }
+                        }
+                    },
+                    UILayout.Grid {
+                        align = { AlignHorizontal.Center, AlignVertical.Center },
+                        widthInLayout = 0.65, -- 65% of the parent grid width
+                        layoutType = GuiLayoutType.Vertical,
+                        contents = {
+                            UIComponent.Slider {
+                                size = ResponsiveSize(300, 20),
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Center, AlignVertical.Center },
+                                sound = Config.audio.sounds.click,
+                                toolTip = function()
+                                    return
+                                    "How strongly mouse movement turns the ship (1.0 = default)."
+                                end,
+                                increment = 0.05,
+                                minValue = 0.1,
+                                maxValue = 3.0,
+                                currentValue = GameState.input.steerSensitivity,
+                                callback = function(v) GameState.input.steerSensitivity = v end
+                            },
+                            UIComponent.Slider {
+                                size = ResponsiveSize(300, 20),
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Center, AlignVertical.Center },
+                                sound = Config.audio.sounds.click,
+                                toolTip = function()
+                                    return
+                                    "Radius in pixels around the screen center where the\ncursor does not turn the ship (chase camera)."
+                                end,
+                                increment = 1,
+                                minValue = 0,
+                                maxValue = 128,
+                                currentValue = GameState.input.steerDeadzone,
+                                callback = function(v) GameState.input.steerDeadzone = v end
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+end
+
+---@return UIComponentContainer
 local function settingsKeybinds()
     return UIComponent.Container {
         align = { AlignHorizontal.Stretch, AlignVertical.Stretch },
@@ -383,6 +464,8 @@ local function settingsSwap()
     elseif settingsCategory == 4 then
         return settingsInterface()
     elseif settingsCategory == 5 then
+        return settingsControls()
+    elseif settingsCategory == 6 then
         return settingsKeybinds()
     else
         return settingsGeneral()
@@ -457,6 +540,13 @@ local settingsGrid = UILayout.Grid {
                         },
                         UIComponent.Button_MainMenu {
                             title = settingsCategoryNames[5][2],
+                            size = ResponsiveSize(300, 60, true),
+                            font = { name = "Unageo-Medium", size = 24 },
+                            callback = switchToControlsSettings,
+                            align = { AlignHorizontal.Center, AlignVertical.Center },
+                        },
+                        UIComponent.Button_MainMenu {
+                            title = settingsCategoryNames[6][2],
                             size = ResponsiveSize(300, 60, true),
                             font = { name = "Unageo-Medium", size = 24 },
                             callback = switchToKeybindSettings,

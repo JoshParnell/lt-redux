@@ -133,6 +133,8 @@ function RenderCoreSystem:registerVars()
         target  = 1.0, -- what we're adapting toward this frame
     }
 
+    self.exposureScale   = 1.0
+
     local win            = Window:size()
     self.resX, self.resY = win.x, win.y
     self.ssResX          = self.resX * self.settings.superSampleRate
@@ -789,6 +791,13 @@ function RenderCoreSystem:setDeferredLightingEnabled(enabled)
     self.settings.deferredLighting = enabled == true
 end
 
+--- Scale the tonemap exposure (1 = unchanged); dims menus in HDR so
+--- highlights still reach white. No effect while tonemapping is off.
+---@param scale number
+function RenderCoreSystem:setExposureScale(scale)
+    self.exposureScale = scale
+end
+
 -- Deferred lighting pass: global environment + point lights → composite with albedo
 function RenderCoreSystem:deferredLighting()
     local buffer0 = self.buffers[Enums.BufferName.buffer0]   -- albedo
@@ -952,7 +961,7 @@ function RenderCoreSystem:tonemap(dt)
     if not self.postSettings.tonemap.enable then return end
 
     local settings = self.postSettings.tonemap
-    local exposure = settings.exposure
+    local exposure = settings.exposure * self.exposureScale
 
     -- Space-game optimized auto-exposure: extremely stable, ignores bright stars/sun, very slow adaptation
     if settings.autoExpose.enable then

@@ -10,7 +10,7 @@ local meta = {
 ---@class UIView
 ---@field name string
 ---@field contents table
----@field noDarken boolean|nil Opt out of the UIRouter scene-darken overlay
+---@field noDarken boolean|nil Opt out of dimming the scene behind this view (see UIRouter:shouldDimScene)
 ---@field windowCount integer
 ---@field addWindowToView fun(self: UIView, window: UIComponentWindow)
 ---@field addContent fun(self, component: UIComponent)

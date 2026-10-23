@@ -19,10 +19,11 @@ Config.render.postFx = {
         strength = 0.5
     },
     tonemap = {
-        enable     = true,
-        mode       = Enums.Tonemappers.Illustris,
-        exposure   = 1.2,
-        autoExpose = {
+        enable      = true,
+        mode        = Enums.Tonemappers.Illustris,
+        exposure    = 1.2,
+        dimExposure = 0.45,  -- exposure while a menu dims the scene
+        autoExpose  = {
             enable    = false,
             speedUp   = 0.5,
             speedDown = 0.3,

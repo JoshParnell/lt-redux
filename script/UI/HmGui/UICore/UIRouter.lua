@@ -1,6 +1,5 @@
 ---@class UIRouter
 local UIRouter = Class("UIRouter", function(self) end)
-local Darken = require("UI.HmGui.UICore.Darken")
 
 function UIRouter:__init()
     ---@type table<UIPage>
@@ -38,16 +37,21 @@ function UIRouter:update(dt)
     Gui:beginGui(GameState.render.resX, GameState.render.resY)
     Profiler.Begin('UIRouter.Update')
     if self.currentPage then
-        -- Dim the scene behind the page for readability, unless the active
-        -- view opts out (in-game HUD overlay, idle screensaver).
-        local view = self.currentPage.currentView
-        if not (view and view.noDarken) then
-            Darken:draw()
-        end
         self.currentPage:update(dt) --! should get delta time from the event, but event bus does not support payloads currently
     end
     Profiler.End()
     Gui:endGui()
+end
+
+-- Whether to dim the scene behind the current page (views opt out via noDarken)
+---@return boolean
+function UIRouter:shouldDimScene()
+    if not self.currentPage then
+        return false
+    end
+
+    local view = self.currentPage.currentView
+    return not (view and view.noDarken)
 end
 
 -- sets current page

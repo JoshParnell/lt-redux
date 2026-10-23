@@ -575,6 +575,9 @@ end
 
 ---@param data EventData
 function LimitTheoryRedux:onRender(data)
+    RenderCoreSystem:setExposureScale(UIRouter:shouldDimScene()
+        and Config.render.postFx.tonemap.dimExposure or 1.0)
+
     if not self.playerShip then
         -- Menu phase: the background star system renders through the modern
         -- core first; the HmGui pages draw on top via Gui:draw below.

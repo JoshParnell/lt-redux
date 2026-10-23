@@ -348,21 +348,14 @@ function CameraManager:screenToRay(screenPos, length)
     local viewInv = self.activeCameraData:getViewInverse()
     local projInv = self.activeCameraData:getProjectionInverse()
 
-    -- Transform NDC points through inverse projection
-    local near4 = Vec4f(ndc.x, ndc.y, -1.0, 1.0)
-    local far4 = Vec4f(ndc.x, ndc.y, 1.0, 1.0)
-
-    near4 = projInv:mulVec(near4)
+    -- Near-plane point only: with zFar/zNear ~1e9 the far plane unprojects
+    -- to w = 0 in float32. In view space this point is also the direction.
+    local near4 = projInv:mulVec(Vec4f(ndc.x, ndc.y, -1.0, 1.0))
     near4:idivs(near4.w)
-    far4 = projInv:mulVec(far4)
-    far4:idivs(far4.w)
+    local nearView = near4:toVec3f()
 
-    -- Transform through inverse view to get world positions
-    local nearPoint = viewInv:mulPoint(near4:toVec3f())
-    local farPoint = viewInv:mulPoint(far4:toVec3f())
-
-    -- Calculate ray direction
-    local dir = farPoint - nearPoint
+    local nearPoint = viewInv:mulPoint(nearView)
+    local dir = viewInv:mulDir(nearView)
     -- `not (>=)` also catches NaN from a degenerate projection
     if not (dir:length() >= 1e-6) then
         dir = self.activeCameraTransform:getRot():getForward()

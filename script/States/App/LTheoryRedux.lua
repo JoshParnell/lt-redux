@@ -68,7 +68,7 @@ local SceneConfig = {
     shipSpawnOffset    = 1.3,     -- Multiplier of planet radius (just outside the surface)
 
     -- Station spawn
-    maxStations        = 2,       -- Max stations to spawn (limited by planet count)
+    stationsPerPlanet  = 3,       -- Spaced evenly around each planet's station orbit
     stationScale       = 0.3,     -- ~3km station
     stationOrbitMult   = 2.5,     -- Multiplier of planet radius for station orbit distance
 }
@@ -579,31 +579,32 @@ function LimitTheoryRedux:createStation(position, label)
     end
 
     table.insert(self.stations, station)
+    self.stationNames[station] = label
     table.insert(self.labeledEntities, { entity = station, label = label })
     return station
 end
 
---- Spawn stations near planets.
+--- Spawn stations evenly spaced around each planet.
 function LimitTheoryRedux:spawnStations()
     self.stations = {}
+    self.stationNames = {}
     local cfg = self.cfg
 
-    local numStations = math.min(cfg.maxStations, #self.planets)
-    for i = 1, numStations do
-        local planet = self.planets[i]
+    for _, planet in ipairs(self.planets) do
         local transform = planet:get(PhysicsComponents.Transform)
         local planetPos = transform:getPos()
-        local planetScale = transform:getScale()
+        local orbitDist = transform:getScale() * cfg.stationOrbitMult
 
-        local orbitDist = planetScale * cfg.stationOrbitMult
-        local angle = (i - 1) * math.pi * 0.7
-        local stationPos = Position(
-            planetPos.x + math.cos(angle) * orbitDist,
-            planetPos.y,
-            planetPos.z + math.sin(angle) * orbitDist
-        )
+        for k = 1, cfg.stationsPerPlanet do
+            local angle = (k - 1) * 2 * math.pi / cfg.stationsPerPlanet
+            local stationPos = Position(
+                planetPos.x + math.cos(angle) * orbitDist,
+                planetPos.y,
+                planetPos.z + math.sin(angle) * orbitDist
+            )
 
-        self:createStation(stationPos, "Station " .. i)
+            self:createStation(stationPos, "Station " .. (#self.stations + 1))
+        end
     end
 end
 

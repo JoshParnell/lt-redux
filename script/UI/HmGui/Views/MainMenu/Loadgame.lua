@@ -57,12 +57,10 @@ end
 ---@param seed integer|nil
 local function newGame(seed)
     local seed = seed or rng:get64()
-    ---@type Universe
-    local Universe = require("Legacy.Systems.Universe.Universe")
 
-    -- we want to create a new universe, do this here so loading screen knows what to load
-    Universe:init(seed)
-    UIRouter:setCurrentPage("Loading_Screen")
+    if GameState.startGame then
+        GameState.startGame(seed)
+    end
 end
 
 local loadgameGrid = UILayout.Grid {

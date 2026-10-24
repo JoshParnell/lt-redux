@@ -118,7 +118,6 @@ function RenderCoreSystem:registerVars()
 
     self.postSettings    = {
         aberration = Config.render.postFx.aberration,
-        bloom      = Config.render.postFx.bloom,
         sharpen    = Config.render.postFx.sharpen,
         radialblur = Config.render.postFx.radialblur,
         tonemap    = Config.render.postFx.tonemap,
@@ -343,7 +342,7 @@ function RenderCoreSystem:render(data)
     Profiler.End()
 
     Profiler.Begin('Render.Post.Bloom')
-    self:bloom(self.postSettings.bloom.radius)
+    self:bloom(GameState.render.bloomRadius)
     Profiler.End()
 
     Profiler.Begin('Render.Post.FXAA')
@@ -876,7 +875,7 @@ function RenderCoreSystem:deferredLighting()
 end
 
 function RenderCoreSystem:bloom(radius)
-    if not self.postSettings.bloom.enable then return end
+    if not GameState.render.bloomEnabled then return end
 
     local width = radius * 0.2
     local A = self.buffers[Enums.BufferName.dsBuffer0]

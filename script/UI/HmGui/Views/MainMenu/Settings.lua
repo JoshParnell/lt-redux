@@ -211,6 +211,18 @@ local function settingsGraphics()
                                 size = 24,
                                 margin = { 0, 14 },
                                 align = { AlignHorizontal.Left, AlignVertical.Center }
+                            },
+                            UIComponent.Text {
+                                text = "Bloom",
+                                size = 24,
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Left, AlignVertical.Center }
+                            },
+                            UIComponent.Text {
+                                text = "Bloom Radius",
+                                size = 24,
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Left, AlignVertical.Center }
                             }
                         }
                     },
@@ -259,6 +271,31 @@ local function settingsGraphics()
                                 maxValue = 3,
                                 currentValue = Settings.get("render.superSample"),
                                 callback = function(v) Settings.set("render.superSample", v) end
+                            },
+                            UIComponent.Switch {
+                                size = ResponsiveSize(80, 20),
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Center, AlignVertical.Center },
+                                sound = Config.audio.sounds.click,
+                                toolTip = function() return "Turns the glow around bright objects off and on." end,
+                                currentValue = function() return GameState.render.bloomEnabled end,
+                                callback = function(v) GameState.render.bloomEnabled = v end
+                            },
+                            UIComponent.Slider {
+                                size = ResponsiveSize(300, 20),
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Center, AlignVertical.Center },
+                                sound = Config.audio.sounds.click,
+                                toolTip = function()
+                                    return
+                                    "How far the bloom glow spreads.\nLarger values cost more GPU time."
+                                end,
+                                increment = 8,
+                                minValue = 8,
+                                maxValue = 256,
+                                currentValue = GameState.render.bloomRadius,
+                                -- Rounded since slider steps can land just off an integer
+                                callback = function(v) GameState.render.bloomRadius = math.floor(v + 0.5) end
                             }
                         }
                     }

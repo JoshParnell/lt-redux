@@ -82,6 +82,7 @@ function GameplayHUDSystem:draw(shipEntity, modeName, piloting)
     y = y + 10
     local controls = {
         "WASD - Thrust | Q/E - Roll | Shift - Boost | T - Travel Drive",
+        "Space/Ctrl - Up/Down | X - Mouse Steering (or hold Right Mouse)",
         "M - Map | N - Navigate (map) / Cancel | C - Camera",
     }
     for _, line in ipairs(controls) do

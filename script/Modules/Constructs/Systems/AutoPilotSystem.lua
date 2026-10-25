@@ -336,7 +336,8 @@ function AutoPilotSystem:update(dt, shipEntity)
         local corrX = errX / errLen
         local corrY = errY / errLen
         local corrZ = errZ / errLen
-        local desiredDecel = math.min(errLen, speed * 0.5)
+        -- At least the ship's own thrust, or drag holds a slow ship below any useful speed
+        local desiredDecel = math.min(errLen, math.max(speed * 0.5, maxDecel))
         local forceScale = desiredDecel * rb:getMass()
         rb:applyForce(Vec3f(corrX * forceScale, corrY * forceScale, corrZ * forceScale))
     end

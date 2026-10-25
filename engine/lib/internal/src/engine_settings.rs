@@ -40,10 +40,11 @@ pub struct EngineSettings {
 pub struct AutomationSettings {
     /// 0 binds any free port; the engine logs the one it got.
     pub port: u16,
-    /// Physical size of the window. Scripts can't change it.
+    /// Physical size of the window. Scripts can't change it. Unused when playing along.
     pub window_size: (u32, u32),
-    /// Show a normal, focused window instead of an inactive one behind other windows.
-    pub foreground: bool,
+    /// Run like a normal game the user can play alongside the automation client:
+    /// real input, the script's window mode, focus, cursor and sound.
+    pub play_along: bool,
     /// Empty keeps the user's real settings directory.
     pub pref_dir: String,
 }

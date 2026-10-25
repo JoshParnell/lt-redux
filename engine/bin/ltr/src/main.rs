@@ -80,10 +80,10 @@ struct Cli {
     #[arg(long, default_value = "1280x720", value_parser = parse_window_size)]
     #[cfg(feature = "automation")]
     window_size: (u32, u32),
-    /// Show the automation window normally instead of inactive behind other windows
+    /// Run the automation game normally, so the user can play alongside the client
     #[arg(long)]
     #[cfg(feature = "automation")]
-    foreground: bool,
+    play_along: bool,
     /// Settings directory of an automation run, so it never touches the real one
     #[arg(long)]
     #[cfg(feature = "automation")]
@@ -134,7 +134,7 @@ pub fn main() {
         automation: cli.automation.map(|port| internal::AutomationSettings {
             port,
             window_size: cli.window_size,
-            foreground: cli.foreground,
+            play_along: cli.play_along,
             pref_dir: cli.pref_dir.unwrap_or_default(),
         }),
         #[cfg(not(feature = "automation"))]

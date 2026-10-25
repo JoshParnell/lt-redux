@@ -79,6 +79,7 @@ type Outcome = Result<Option<Value>, String>;
 
 pub struct Automation {
     requests: Receiver<Request>,
+    play_along: bool,
     clock: Clock,
     dt: f64,
     /// Frames completed so far, which is also the index of the frame being built.
@@ -98,7 +99,12 @@ impl Automation {
     pub fn start(settings: &AutomationSettings) -> Self {
         Self {
             requests: server::start(settings.port),
-            clock: Clock::Fixed,
+            play_along: settings.play_along,
+            clock: if settings.play_along {
+                Clock::Realtime
+            } else {
+                Clock::Fixed
+            },
             dt: 1.0 / 60.0,
             frame: 0,
             time: 0.0,
@@ -114,8 +120,8 @@ impl Automation {
 
     /// Serve requests until this frame is due, then set its clock and input.
     pub fn begin_frame(&mut self, engine: &mut Engine) {
-        // Window events are ignored in an automation run, so CursorEntered never arrives.
-        if self.frame == 0 {
+        // An isolated run ignores window events, so CursorEntered never arrives.
+        if self.frame == 0 && !self.play_along {
             engine
                 .input
                 .update_mouse(DeviceId::dummy(), |state| state.update_in_window(true));
@@ -194,6 +200,9 @@ impl Automation {
         let busy = !self.waits.is_empty() || !self.input.is_idle();
         let interval = if self.clock == Clock::Paused && !busy {
             IDLE_INTERVAL
+        } else if self.clock == Clock::Realtime && self.play_along {
+            // Uncapped, like a normal run; the present mode still applies.
+            Duration::ZERO
         } else {
             FRAME_INTERVAL
         };

@@ -37,8 +37,7 @@ pub struct Engine {
     /// Whether `changed_window` has already logged that a script's present
     /// mode request was overridden - logged once, not every frame.
     present_mode_override_logged: bool,
-    /// Set when an automation client drives the run (ltr `--automation`): OS
-    /// input is ignored and the window never takes focus, the cursor or the screen.
+    /// Set when an automation client drives the run (ltr `--automation`).
     pub automation: Option<&'static AutomationSettings>,
 }
 
@@ -118,15 +117,17 @@ impl Engine {
             window.present_mode = mode;
         }
         if let Some(automation) = &settings.automation {
-            let (width, height) = automation.window_size;
-            // Scale 1 keeps UI layout and screenshot pixels independent of the monitor's DPI.
-            window.resolution =
-                WindowResolution::new(width as f32, height as f32).with_scale_factor_override(1.0);
-            window.focused = true;
             if !automation.pref_dir.is_empty() {
                 Directory::override_pref_path(&automation.pref_dir);
             }
-            Audio::mute_all();
+            if !automation.play_along {
+                let (width, height) = automation.window_size;
+                // Scale 1 keeps UI layout and screenshot pixels independent of the monitor's DPI.
+                window.resolution = WindowResolution::new(width as f32, height as f32)
+                    .with_scale_factor_override(1.0);
+                window.focused = true;
+                Audio::mute_all();
+            }
         }
         let cache = CachedWindow {
             window: window.clone(),
@@ -134,7 +135,7 @@ impl Engine {
         let background = settings
             .automation
             .as_ref()
-            .is_some_and(|automation| !automation.foreground);
+            .is_some_and(|automation| !automation.play_along);
         let mut winit_window = WinitWindow::new(event_loop, &window, background);
         winit_window.resume();
         let scale_factor = window.scale_factor();
@@ -225,6 +226,12 @@ impl Engine {
         result
     }
 
+    /// Settings of an automation run that isn't playing along: OS input is
+    /// ignored and the window never takes focus, the cursor or the screen.
+    pub fn isolated(&self) -> Option<&'static AutomationSettings> {
+        self.automation.filter(|automation| !automation.play_along)
+    }
+
     // Apply user changes, and then detect changes to the window and update the winit window accordingly.
     pub fn changed_window(&mut self) {
         // Apply user input changes first
@@ -237,8 +244,8 @@ impl Engine {
             }
         }
 
-        // Scripts can't resize an automation window or make it fullscreen.
-        if let Some(automation) = self.automation {
+        // Scripts can't resize an isolated window or make it fullscreen.
+        if let Some(automation) = self.isolated() {
             let (width, height) = automation.window_size;
             self.window.mode = WindowMode::Windowed;
             self.window
@@ -334,7 +341,7 @@ impl Engine {
         }
 
         // === Handle cursor position ===
-        if self.automation.is_none()
+        if self.isolated().is_none()
             && self.window.physical_cursor_position()
                 != self.cache.window.physical_cursor_position()
         {
@@ -362,7 +369,7 @@ impl Engine {
         // A grab only holds while focused, so wait for focus (and re-apply on
         // regaining it) rather than taking focus from the user's other windows.
         let gained_focus = self.window.focused && !self.cache.window.focused;
-        if self.automation.is_none()
+        if self.isolated().is_none()
             && self.window.focused
             && (self.window.cursor.grab_mode != self.cache.window.cursor.grab_mode || gained_focus)
         {
@@ -461,7 +468,7 @@ impl Engine {
 
         // === Handle internal cursor position requests ===
         if let Some(position) = self.window.internal.take_cursor_position_request() {
-            if self.automation.is_some() {
+            if self.isolated().is_some() {
                 // Warp the automation mouse instead of the user's cursor.
                 self.input.update_mouse(DeviceId::dummy(), |state| {
                     state.update_position(position.x as f32, position.y as f32)
@@ -477,7 +484,7 @@ impl Engine {
         }
 
         // === Focus ===
-        if self.automation.is_none()
+        if self.isolated().is_none()
             && self.window.focused != self.cache.window.focused
             && self.window.focused
         {

@@ -33,7 +33,7 @@ Flags for an automation run:
 |------|--------|
 | `--automation <port>` | Serve the API. Required for the flags below to apply |
 | `--window-size WxH` | Physical window size, default `1280x720`. Scripts can't resize the window or make it fullscreen |
-| `--foreground` | Show a normal, focused window instead of an inactive one behind other windows |
+| `--play-along` | Run like a normal game you can play alongside the client. See below |
 | `--pref-dir <path>` | Settings directory, so the run never reads or writes your real settings |
 
 `--seed <n>` and `--autostart` work in any run. `--seed` makes New Game build
@@ -43,17 +43,32 @@ doubles.
 
 ### What an automation run changes
 
+By default a run is isolated, so it can run unattended without getting in
+anyone's way:
+
 - **Input** comes only from the API. Real keyboard, mouse, gamepad and window
   focus events are ignored, so the user's typing and mouse can't interfere.
   `Window:isFocused()` is always true.
-- **The window** opens inactive and behind other windows, unless
-  `--foreground` is given. The game never takes focus, grabs the cursor or
-  moves it. When a script warps the cursor, the virtual mouse moves instead.
+- **The window** opens inactive and behind other windows, at
+  `--window-size`. The game never takes focus, grabs the cursor or moves it.
+  When a script warps the cursor, the virtual mouse moves instead.
 - **The scale factor** is 1, so UI layout and screenshot pixels don't depend
   on the monitor's DPI.
 - **Audio** is muted.
 - **Frames** are paced at 60 per second, or 10 while paused with nothing to
   do. Steps and fast waits run as fast as they can.
+
+### Playing along
+
+`--play-along` runs the game normally, so a person can play it while the
+client drives it too, for stepping through a feature together. The window,
+cursor, focus and sound behave as in a normal run, so the main game goes
+fullscreen. Real input works and mixes with API input; whichever moves the
+mouse last wins. `--window-size` doesn't apply, so screenshots are the size
+of the window.
+
+The clock starts at `realtime` and frames aren't capped, as in a normal run.
+The other clocks work as in an isolated run.
 
 ## API
 
@@ -93,8 +108,8 @@ a screenshot at scale 1.
 
 ### Clock
 
-- `fixed`, the default: every frame advances exactly `dt` (1/60 s), however
-  long it takes to render. With a seed this makes runs repeatable, apart
+- `fixed`, the default unless playing along: every frame advances exactly
+  `dt` (1/60 s), however long it takes to render. With a seed this makes runs repeatable, apart
   from work that finishes on worker threads.
 - `paused`: frames keep rendering, so screenshots and the UI stay live, but
   time doesn't advance. `step` advances it, as does `wait` with `fast`.
@@ -167,8 +182,9 @@ The tools mirror the API, plus:
 
 - `build`: `cargo build -p ltr --features automation`. It stops a running
   game first, because Windows locks its binaries.
-- `launch`: start the game with a fresh settings folder and wait for its
-  first frame.
+- `launch`: start the game and wait for its first frame. An isolated run gets
+  a fresh settings folder. `play_along` runs with your own settings, in the
+  foreground.
 - `stop`
 - `logs`: the game log, filtered by level or regex. The full log is
   `target/automation/ltr.log`.

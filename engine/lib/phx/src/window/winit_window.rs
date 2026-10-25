@@ -170,9 +170,7 @@ impl WinitWindow {
             .with_decorations(window.decorations);
 
         if background {
-            window_attributes = window_attributes
-                .with_active(false)
-                .with_window_level(winit::window::WindowLevel::AlwaysOnBottom);
+            window_attributes = window_attributes.with_active(false);
         }
 
         let constraints = window.resize_constraints.check_constraints();
@@ -270,6 +268,15 @@ impl WinitWindow {
 
     pub fn window(&self) -> &winit::window::Window {
         &self.window
+    }
+
+    /// Move the window behind all others without activating it. Its level stays
+    /// normal, so switching to it brings it forward as usual.
+    pub fn send_to_back(&self) {
+        self.window
+            .set_window_level(winit::window::WindowLevel::AlwaysOnBottom);
+        self.window
+            .set_window_level(winit::window::WindowLevel::Normal);
     }
 
     /// Keep the main thread's copy of the present mode in sync with runtime

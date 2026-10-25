@@ -36,12 +36,16 @@ Drives Limit Theory Redux for testing changes. Typical loop: build, launch, act
 (key/click/mouse/type/step), observe (screenshot/ui/state via lua), stop.
 
 - The game runs in an inactive window behind the user's windows and ignores the
-  real mouse and keyboard, so it never disturbs them. launch(foreground=True)
-  shows it normally.
+  real mouse and keyboard, so it never disturbs them. launch(play_along=True)
+  instead runs it like a normal game the user plays alongside you: their own
+  settings, fullscreen, sound, and their input mixed with yours. Use it only
+  when the user asks to play together.
 - Coordinates are window pixels, origin at the top left, same as screenshots
-  taken at scale 1.
-- The clock starts "fixed" (every frame advances 1/60 s). "paused" freezes time
-  while frames keep rendering; step advances it. Input actions count frames.
+  taken at scale 1. Play-along screenshots are full monitor size, so pass a
+  scale below 1.
+- The clock starts "fixed" (every frame advances 1/60 s), or "realtime" when
+  playing along. "paused" freezes time while frames keep rendering; step
+  advances it. Input actions count frames.
 - lua runs on the game's main thread between frames. Code is evaluated as an
   expression when it parses as one. The game forbids creating globals, so use
   locals or rawset(_G, ...). Results come back as JSON.
@@ -67,7 +71,7 @@ class Game:
         self.job = None
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def launch(self, args):
+    def launch(self, args, background):
         self.stop()
         with self.lock:
             self.lines.clear()
@@ -78,7 +82,7 @@ class Game:
 
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         startupinfo = None
-        if os.name == "nt":
+        if background and os.name == "nt":
             # Windows applies this to the game's first ShowWindow, whatever the engine asks for.
             startupinfo = subprocess.STARTUPINFO(dwFlags=subprocess.STARTF_USESHOWWINDOW, wShowWindow=4)  # SW_SHOWNOACTIVATE
         self.process = subprocess.Popen(
@@ -310,8 +314,8 @@ def launch(
     autostart: bool = False,
     width: int = 1280,
     height: int = 720,
-    clock: str = "fixed",
-    foreground: bool = False,
+    clock: str = "",
+    play_along: bool = False,
     release: bool = False,
     pref_dir: str = "",
     args: list[str] | None = None,
@@ -320,19 +324,25 @@ def launch(
 
     app: a state under script/States/App or its Tests folder, e.g. "SolarSystemPlayable";
     empty runs the main game. seed and autostart skip the main menu into a
-    reproducible New Game. pref_dir defaults to a fresh scratch folder, so the
-    user's settings are never touched. args are extra ltr flags.
+    reproducible New Game. clock defaults to fixed, or realtime when playing along.
+
+    play_along runs it as a normal game the user can play with you: their own
+    settings, the game's window mode (usually fullscreen), focus and sound, with
+    their input accepted alongside yours; width and height don't apply.
+    Otherwise pref_dir defaults to a fresh scratch folder, so the user's
+    settings are never touched. args are extra ltr flags.
     """
     exe = REPO / "target" / ("release" if release else "debug") / EXE
     if not exe.exists():
         raise GameError(f"{exe} doesn't exist. Run build first.")
-    command = [
-        str(exe), "--automation", "0", "--no-color",
-        "--window-size", f"{width}x{height}",
-        "--pref-dir", pref_dir or tempfile.mkdtemp(prefix="ltr-prefs-"),
-    ]
-    if foreground:
-        command.append("--foreground")
+    command = [str(exe), "--automation", "0", "--no-color"]
+    if play_along:
+        command.append("--play-along")
+    else:
+        command += ["--window-size", f"{width}x{height}"]
+        pref_dir = pref_dir or tempfile.mkdtemp(prefix="ltr-prefs-")
+    if pref_dir:
+        command += ["--pref-dir", pref_dir]
     if seed is not None:
         command += ["--seed", str(seed)]
     if autostart:
@@ -341,9 +351,10 @@ def launch(
     if app:
         command.append(app)
 
-    game.launch(command)
+    game.launch(command, background=not play_along)
     game.request("status", timeout=300)
-    game.request("clock", {"mode": clock})
+    if clock:
+        game.request("clock", {"mode": clock})
     return report(game.request("status"))
 
 

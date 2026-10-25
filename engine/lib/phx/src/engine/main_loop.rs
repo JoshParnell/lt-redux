@@ -18,7 +18,7 @@ pub struct MainLoop {
     pub automation: Option<crate::automation::Automation>,
 }
 
-/// Window events an automation run ignores, so the user's mouse and keyboard
+/// Window events an isolated automation run ignores, so the user's mouse and keyboard
 /// can't interfere with the virtual input.
 fn is_os_input(event: &WindowEvent) -> bool {
     matches!(
@@ -122,7 +122,7 @@ impl ApplicationHandler for MainLoop {
             event_loop.exit();
         }
 
-        if engine.automation.is_some() && is_os_input(&event) {
+        if engine.isolated().is_some() && is_os_input(&event) {
             return;
         }
 
@@ -307,7 +307,7 @@ impl ApplicationHandler for MainLoop {
         let Some(engine) = self.engine.as_mut() else {
             return;
         };
-        if engine.automation.is_some() {
+        if engine.isolated().is_some() {
             return;
         }
 
@@ -351,6 +351,10 @@ impl ApplicationHandler for MainLoop {
             .unwrap_or_default()
         {
             engine.winit_window.window().set_visible(true);
+            // Showing raises a window even when it isn't activated.
+            if engine.isolated().is_some() {
+                engine.winit_window.send_to_back();
+            }
         }
 
         #[cfg(feature = "automation")]
@@ -359,7 +363,7 @@ impl ApplicationHandler for MainLoop {
         }
 
         // Load all gamepad events
-        if engine.automation.is_none() {
+        if engine.isolated().is_none() {
             engine.input.update_gamepad(|state| state.update());
         }
 

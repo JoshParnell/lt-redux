@@ -174,6 +174,32 @@ local function findObstacle(world, rb, targetRb, targetPos, dirX, dirY, dirZ, le
     return nearest, nearestClearance, nearestT
 end
 
+--- Turn a ship toward a world direction with its yaw and pitch torque.
+---@param rb RigidBody
+---@param courseX number unit direction
+---@param courseY number
+---@param courseZ number
+---@return number alignment dot product of the ship's forward and the course
+function AutoPilotSystem:steerToward(rb, courseX, courseY, courseZ)
+    local cfg = Config.game.shipFlight
+    local rot = rb:getRot()
+    local fwd, rt, up = rot:getForward(), rot:getRight(), rot:getUp()
+
+    local crossX = fwd.y * courseZ - fwd.z * courseY
+    local crossY = fwd.z * courseX - fwd.x * courseZ
+    local crossZ = fwd.x * courseY - fwd.y * courseX
+
+    local yawError   = Math.Clamp(-(up.x * crossX + up.y * crossY + up.z * crossZ) * 3, -1, 1)
+    local pitchError = Math.Clamp((rt.x * crossX + rt.y * crossY + rt.z * crossZ) * 3, -1, 1)
+
+    rb:applyTorque(rot:mulV(Vec3f(
+        pitchError * cfg.torquePitch * 0.3,
+        -yawError * cfg.torqueYaw * 0.3,
+        0
+    )))
+    return fwd.x * courseX + fwd.y * courseY + fwd.z * courseZ
+end
+
 --- Exponential mapping for smooth control output (from legacy)
 local function expMap(x)
     if x >= 0 then
@@ -343,7 +369,6 @@ function AutoPilotSystem:update(dt, shipEntity)
     local speed = rb:getSpeed()
     local rot = rb:getRot()
     local fwd = rot:getForward()
-    local rt  = rot:getRight()
     local up  = rot:getUp()
 
     -- Get target body's velocity — skip inside gravity wells (GravityWellSystem handles matching)
@@ -431,22 +456,7 @@ function AutoPilotSystem:update(dt, shipEntity)
     -- Steering: point ship toward desired velocity direction
     local desVelLen = math.sqrt(desVelX * desVelX + desVelY * desVelY + desVelZ * desVelZ)
     if desVelLen > 1 then
-        local courseX = desVelX / desVelLen
-        local courseY = desVelY / desVelLen
-        local courseZ = desVelZ / desVelLen
-
-        local crossX = fwd.y * courseZ - fwd.z * courseY
-        local crossY = fwd.z * courseX - fwd.x * courseZ
-        local crossZ = fwd.x * courseY - fwd.y * courseX
-
-        local yawError   = Math.Clamp(-(up.x * crossX + up.y * crossY + up.z * crossZ) * 3, -1, 1)
-        local pitchError = Math.Clamp((rt.x * crossX + rt.y * crossY + rt.z * crossZ) * 3, -1, 1)
-
-        rb:applyTorque(rot:mulV(Vec3f(
-            pitchError * cfg.torquePitch * 0.3,
-            -yawError * cfg.torqueYaw * 0.3,
-            0
-        )))
+        self:steerToward(rb, desVelX / desVelLen, desVelY / desVelLen, desVelZ / desVelLen)
     end
 
     -- Travel drive: its multiplier sets top speed (cruise x mult), so match it to the

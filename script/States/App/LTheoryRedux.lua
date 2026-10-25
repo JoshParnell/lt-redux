@@ -32,6 +32,7 @@ local CameraEntity = require('Modules.Cameras.Entities').Camera
 local RenderCoreSystem = require('Modules.Rendering.Systems.RenderCoreSystem')
 local PlayerController = require('Modules.Constructs.Systems.PlayerController')
 local AutoPilotSystem = require('Modules.Constructs.Systems.AutoPilotSystem')
+local ActionSystem = require('Modules.Constructs.Systems.ActionSystem')
 local GravityWellSystem = require('Modules.Physics.Systems.GravityWellSystem')
 local CelestialLightingSystem = require('Modules.Rendering.Systems.CelestialLightingSystem')
 local LensFlareSystem = require('Modules.Rendering.Systems.LensFlareSystem')
@@ -755,6 +756,7 @@ function LimitTheoryRedux:onInput(data)
     end
 
     if GeneralActions.AutoPilotToggle:isPressed() then
+        ActionSystem:clear(self.playerShip)
         if AutoPilotSystem:isActive(self.playerShip) then
             AutoPilotSystem:disengage(self.playerShip)
         end
@@ -790,6 +792,7 @@ function LimitTheoryRedux:onStateSim(data)
 
     MemoryReporter:update(dt)
 
+    ActionSystem:update(dt)
     self.player:update(dt)
     self.world:update(dt)
 end

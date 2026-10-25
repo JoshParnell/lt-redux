@@ -4,6 +4,7 @@ return {
     Defense           = require("Modules.Constructs.Components.DefenseComponent"),
     TravelDrive       = require("Modules.Constructs.Components.TravelDriveComponent"),
     AutoPilot         = require("Modules.Constructs.Components.AutoPilotComponent"),
+    Actions           = require("Modules.Constructs.Components.ActionsComponent"),
     ShipFlightControl = require("Modules.Constructs.Components.ShipFlightControlComponent"),
     Targetable        = require("Modules.Constructs.Components.TargetableComponent"),
     Turret            = require("Modules.Constructs.Components.TurretComponent"),

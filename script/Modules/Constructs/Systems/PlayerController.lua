@@ -13,6 +13,7 @@ local RenderComp              = require("Modules.Rendering.Components").Render
 local ShipFlightSystem        = require("Modules.Constructs.Systems.ShipFlightSystem")
 local TravelDriveSystem       = require("Modules.Constructs.Systems.TravelDriveSystem")
 local AutoPilotSystem         = require("Modules.Constructs.Systems.AutoPilotSystem")
+local ActionSystem            = require("Modules.Constructs.Systems.ActionSystem")
 local CursorManager           = require("Input.CursorManager")
 local GeneralActions           = require("Input.ActionBindings.GeneralActions")
 
@@ -240,8 +241,8 @@ function PlayerController:update(dt)
         self:cycleMode()
     end
 
-    -- Manual flight only when piloting AND not on autopilot
-    if self:isPiloting() and not AutoPilotSystem:isActive(self.ship) then
+    -- Manual flight only when piloting AND not on autopilot or carrying out actions
+    if self:isPiloting() and not AutoPilotSystem:isActive(self.ship) and not ActionSystem:isBusy(self.ship) then
         local isFPS = (self.mode == Enums.CameraMode.FirstPerson)
 
         if ShipActions.SteerToggle:isPressed() then

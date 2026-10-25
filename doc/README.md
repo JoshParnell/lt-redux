@@ -1,5 +1,6 @@
 # Limit Theory Redux documentation
 
+1. [Repository state and LT roadmap](ROADMAP.md)
 1. [Engine](engine/README.md)
    - [Phx](../engine/lib/phx/README.md)
    - [HmGui](../engine/lib/phx/src/ui/hmgui/README.md)

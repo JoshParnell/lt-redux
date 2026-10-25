@@ -202,6 +202,25 @@ function AutoPilotSystem:steerToward(rb, courseX, courseY, courseZ)
     return fwd.x * courseX + fwd.y * courseY + fwd.z * courseZ
 end
 
+--- Push a ship toward a velocity with at least its own thrust, more when it's moving fast.
+---@param rb RigidBody
+---@param desVelX number
+---@param desVelY number
+---@param desVelZ number
+---@param deadband number velocity error ignored, in units/s
+function AutoPilotSystem:matchVelocity(rb, desVelX, desVelY, desVelZ, deadband)
+    local vel = rb:getVelocity()
+    local errX, errY, errZ = desVelX - vel.x, desVelY - vel.y, desVelZ - vel.z
+    local errLen = math.sqrt(errX * errX + errY * errY + errZ * errZ)
+    if errLen <= deadband then return end
+
+    -- At least the ship's own thrust, or drag holds a slow ship below any useful speed
+    local maxDecel = Config.game.shipFlight.thrustForward / rb:getMass()
+    local accel = math.min(errLen, math.max(rb:getSpeed() * 0.5, maxDecel))
+    local forceScale = accel * rb:getMass() / errLen
+    rb:applyForce(Vec3f(errX * forceScale, errY * forceScale, errZ * forceScale))
+end
+
 --- Fly every ship with an autopilot other than `pilotedShip`, whose controller flies it.
 ---@param dt number
 ---@param pilotedShip Entity|nil
@@ -379,7 +398,6 @@ function AutoPilotSystem:update(dt, shipEntity)
     end
 
     local cfg = Config.game.shipFlight
-    local vel = rb:getVelocity()
     local speed = rb:getSpeed()
     local rot = rb:getRot()
     local fwd = rot:getForward()
@@ -450,22 +468,7 @@ function AutoPilotSystem:update(dt, shipEntity)
     local desVelY = dirY * desiredApproachSpeed + targetVelY
     local desVelZ = dirZ * desiredApproachSpeed + targetVelZ
 
-    -- Velocity error
-    local errX = desVelX - vel.x
-    local errY = desVelY - vel.y
-    local errZ = desVelZ - vel.z
-    local errLen = math.sqrt(errX * errX + errY * errY + errZ * errZ)
-
-    -- Apply force to correct velocity error
-    if errLen > 0.1 then
-        local corrX = errX / errLen
-        local corrY = errY / errLen
-        local corrZ = errZ / errLen
-        -- At least the ship's own thrust, or drag holds a slow ship below any useful speed
-        local desiredDecel = math.min(errLen, math.max(speed * 0.5, maxDecel))
-        local forceScale = desiredDecel * rb:getMass()
-        rb:applyForce(Vec3f(corrX * forceScale, corrY * forceScale, corrZ * forceScale))
-    end
+    self:matchVelocity(rb, desVelX, desVelY, desVelZ, 0.1)
 
     -- Steering: point ship toward desired velocity direction
     local desVelLen = math.sqrt(desVelX * desVelX + desVelY * desVelY + desVelZ * desVelZ)

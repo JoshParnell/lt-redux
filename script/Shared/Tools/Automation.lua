@@ -3,10 +3,15 @@
 --- Distances and speeds are physics units; the `*Hud` fields format them as the HUD does.
 local PhysicsComponents = require('Modules.Physics.Components')
 local AutoPilotSystem = require('Modules.Constructs.Systems.AutoPilotSystem')
+local ActionSystem = require('Modules.Constructs.Systems.ActionSystem')
+local Actions = require('Modules.Constructs.Actions')
 local UniverseScaleConfig = require('Config.Gen.UniverseScaleConfig')
 local Registry = require('Core.ECS.Registry')
 
 local Automation = {}
+
+--- Action classes for push and queue: FlyTo, Face, Wait.
+Automation.Actions = Actions
 
 ---@param x number
 ---@param digits integer|nil
@@ -187,14 +192,52 @@ function Automation.placeNear(target, altitude)
     return Automation.aimAt(target)
 end
 
---- Engage the game's autopilot toward `target`. It arrives at 1.5x the target's radius from
---- its center (at least 50 units) and then disengages; wait on `not Automation.autopilot().active`.
+--- Start `action` on the player ship now, suspending its current action until it finishes.
+---@param action Action
+function Automation.push(action)
+    ActionSystem:push(Automation.ship(), action)
+end
+
+--- Run `action` on the player ship after the actions it already has.
+---@param action Action
+function Automation.queue(action)
+    ActionSystem:queue(Automation.ship(), action)
+end
+
+--- Queue a FlyTo, flown by the game's autopilot. It arrives at 1.5x the target's radius from
+--- its center (at least 50 units).
 ---@param target Entity|string
----@return table nav
+---@return string[] actions
 function Automation.flyTo(target)
-    target = resolve(target)
-    AutoPilotSystem:engageEntity(Automation.ship(), target)
-    return Automation.nav(target)
+    Automation.queue(Actions.FlyTo(resolve(target)))
+    return Automation.actions()
+end
+
+--- Queue turning the player ship to face `target`.
+---@param target Entity|string
+---@return string[] actions
+function Automation.face(target)
+    Automation.queue(Actions.Face(resolve(target)))
+    return Automation.actions()
+end
+
+--- Queue holding still for `seconds` of game time.
+---@param seconds number
+---@return string[] actions
+function Automation.wait(seconds)
+    Automation.queue(Actions.Wait(seconds))
+    return Automation.actions()
+end
+
+---@return string[] the player ship's actions, the running one first
+function Automation.actions()
+    return ActionSystem:getNames(Automation.ship())
+end
+
+--- True once the player ship has no actions left; wait on `Automation.idle()`.
+---@return boolean
+function Automation.idle()
+    return not ActionSystem:isBusy(Automation.ship())
 end
 
 ---@return table
@@ -212,7 +255,9 @@ function Automation.autopilot()
     }
 end
 
+--- Clear the player ship's actions and disengage its autopilot.
 function Automation.stop()
+    ActionSystem:clear(Automation.ship())
     AutoPilotSystem:disengage(Automation.ship())
 end
 

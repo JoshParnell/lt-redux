@@ -163,14 +163,20 @@ entities or text matched against entity names, nearest first (`"Planet"`,
 | `nav(target)` | Distance to the target's surface, speed, and the target's direction in the ship's frame |
 | `aimAt(target)` | Turn the ship to face the target instantly |
 | `placeNear(target, altitude)` | Move the ship to `altitude` above the target's surface, facing it |
-| `flyTo(target)` | Engage the game's autopilot toward the target |
-| `autopilot()` | Autopilot state; wait on `not Automation.autopilot().active` |
-| `stop()` | Disengage the autopilot |
+| `flyTo(target)` | Queue a FlyTo action, flown by the game's autopilot |
+| `face(target)` | Queue turning the ship to face the target |
+| `wait(seconds)` | Queue holding still for `seconds` of game time |
+| `push(action)`, `queue(action)` | Interrupt with, or queue, any action from `Automation.Actions` |
+| `actions()` | The ship's actions, the running one first |
+| `idle()` | True once the ship has no actions left |
+| `autopilot()` | Autopilot state, including whether it's steering around an obstacle |
+| `stop()` | Clear the ship's actions and disengage the autopilot |
 | `keyFor(action, negative)` | Name of the key bound to an input action, as the `action` tool uses |
 
-`placeNear` and `aimAt` set up a scene instantly. `flyTo` exercises the real
-autopilot, which has no obstacle avoidance and uses the travel drive only far
-from its target, so nearby trips run at normal cruise speed.
+`placeNear` and `aimAt` set up a scene instantly. `flyTo`, `face` and `wait`
+use the game's own action stack, the same orders an NPC would run, so a
+sequence reads in order: `Automation.flyTo('Station 1')`, then
+`Automation.wait(2)`, then wait on `Automation.idle()`.
 
 ### UI
 

@@ -476,7 +476,6 @@ end
 --- thing the player sees is a rock up close, with the ring/planet nearby).
 function LimitTheoryRedux:spawnPlayerShip()
     local cfg = self.cfg
-    local flightCfg = Config.game.shipFlight
 
     local spawnPos = Position(0, 0, 0)
     if #self.planets > 0 then
@@ -525,31 +524,63 @@ function LimitTheoryRedux:spawnPlayerShip()
         end
     end
 
-    self.playerShipHandle = self.constructManager:createShip({
+    self.playerShipHandle = self:createShip(spawnPos)
+    self.playerShip = self.playerShipHandle.root
+
+    Log.Info("Player ship spawned at (%.1f, %.1f, %.1f)", spawnPos.x, spawnPos.y, spawnPos.z)
+end
+
+--- A flyable ship: it can take actions and fly itself with its autopilot.
+---@param position Position
+---@param shipType integer|nil Enums.ShipType, Fighter by default
+---@param scale number|nil hull scale, the smallest hull's by default
+---@return table handle whose `root` is the ship entity
+function LimitTheoryRedux:createShip(position, shipType, scale)
+    local flightCfg = Config.game.shipFlight
+    local handle = self.constructManager:createShip({
         seed = self.rng:get31(),
-        shipType = Enums.ShipType.Fighter,
+        shipType = shipType or Enums.ShipType.Fighter,
         config = {
-            position = spawnPos,
-            scale = Config.game.shipHulls.scale[1],
+            position = position,
+            scale = scale or Config.game.shipHulls.scale[1],
             isKinematic = false,
         },
     })
-    self.playerShip = self.playerShipHandle.root
+    local ship = handle.root
 
-    self.playerShip:add(ConstructComponents.TravelDrive())
-    self.playerShip:add(ConstructComponents.AutoPilot())
-    self.playerShip:add(ConstructComponents.ShipFlightControl())
+    ship:add(ConstructComponents.TravelDrive())
+    ship:add(ConstructComponents.AutoPilot())
+    ship:add(ConstructComponents.ShipFlightControl())
 
     local hullIdx = 1
     local hullCfg = Config.game.shipHulls
-    local rbCmp = self.playerShip:get(PhysicsComponents.RigidBody)
-    local rb = rbCmp:getRigidBody()
+    local rb = ship:get(PhysicsComponents.RigidBody):getRigidBody()
     rb:setMass(hullCfg.mass[hullIdx])
     rb:setDrag(flightCfg.linearDrag, flightCfg.angularDrag)
     rb:setFriction(0)
     rb:setSleepThreshold(0, 0)
+    return handle
+end
 
-    Log.Info("Player ship spawned at (%.1f, %.1f, %.1f)", spawnPos.x, spawnPos.y, spawnPos.z)
+--- A station at `position`, added to physics and labelled on the HUD.
+---@param position Position
+---@param label string
+---@return Entity
+function LimitTheoryRedux:createStation(position, label)
+    local station = StationGenerator:createStation(self.rng:get31(), {
+        position = position,
+        scale = self.cfg.stationScale,
+        isKinematic = true,
+    })
+
+    local stationRbCmp = station:get(PhysicsComponents.RigidBody)
+    if stationRbCmp and stationRbCmp:getRigidBody() then
+        self.world:addRigidBody(stationRbCmp:getRigidBody())
+    end
+
+    table.insert(self.stations, station)
+    table.insert(self.labeledEntities, { entity = station, label = label })
+    return station
 end
 
 --- Spawn stations near planets.
@@ -572,19 +603,7 @@ function LimitTheoryRedux:spawnStations()
             planetPos.z + math.sin(angle) * orbitDist
         )
 
-        local station = StationGenerator:createStation(self.rng:get31(), {
-            position = stationPos,
-            scale = cfg.stationScale,
-            isKinematic = true,
-        })
-
-        local stationRbCmp = station:get(PhysicsComponents.RigidBody)
-        if stationRbCmp and stationRbCmp:getRigidBody() then
-            self.world:addRigidBody(stationRbCmp:getRigidBody())
-        end
-
-        table.insert(self.stations, station)
-        table.insert(self.labeledEntities, { entity = station, label = "Station " .. i })
+        self:createStation(stationPos, "Station " .. i)
     end
 end
 
@@ -793,6 +812,7 @@ function LimitTheoryRedux:onStateSim(data)
     MemoryReporter:update(dt)
 
     ActionSystem:update(dt)
+    AutoPilotSystem:updateShips(dt, self.playerShip)
     self.player:update(dt)
     self.world:update(dt)
 end

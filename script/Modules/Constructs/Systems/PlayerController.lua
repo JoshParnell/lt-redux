@@ -227,7 +227,7 @@ function PlayerController:update(dt)
     for _, binding in pairs(ShipActions) do
         binding:update(dt)
     end
-    TravelDriveSystem:update(dt, self.ship)
+    TravelDriveSystem:update(dt, self.ship, true)
 
     -- AutoPilot always updates (even with map open — ship keeps navigating)
     AutoPilotSystem:update(dt, self.ship)

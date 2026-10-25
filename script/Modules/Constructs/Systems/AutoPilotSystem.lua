@@ -1,5 +1,7 @@
 local PhysicsComponents   = require("Modules.Physics.Components")
 local ConstructComponents = require("Modules.Constructs.Components")
+local Registry            = require("Core.ECS.Registry")
+local TravelDriveSystem   = require("Modules.Constructs.Systems.TravelDriveSystem")
 
 --- AutoPilot System — steers a ship toward a target entity or position.
 --- Operates on the AutoPilotComponent attached to ship entities.
@@ -198,6 +200,18 @@ function AutoPilotSystem:steerToward(rb, courseX, courseY, courseZ)
         0
     )))
     return fwd.x * courseX + fwd.y * courseY + fwd.z * courseZ
+end
+
+--- Fly every ship with an autopilot other than `pilotedShip`, whose controller flies it.
+---@param dt number
+---@param pilotedShip Entity|nil
+function AutoPilotSystem:updateShips(dt, pilotedShip)
+    for entity in Registry:iterEntities(ConstructComponents.AutoPilot) do
+        if not pilotedShip or entity.id ~= pilotedShip.id then
+            TravelDriveSystem:update(dt, entity)
+            self:update(dt, entity)
+        end
+    end
 end
 
 --- Exponential mapping for smooth control output (from legacy)

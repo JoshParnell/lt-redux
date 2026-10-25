@@ -13,7 +13,8 @@ local TravelDriveSystem = {}
 --- Update the travel drive for a ship entity
 ---@param dt number Delta time
 ---@param shipEntity Entity
-function TravelDriveSystem:update(dt, shipEntity)
+---@param readInput boolean|nil toggle the drive with the player's travel drive key
+function TravelDriveSystem:update(dt, shipEntity, readInput)
     if not shipEntity then return end
 
     local drive = shipEntity:get(ConstructComponents.TravelDrive)
@@ -28,7 +29,7 @@ function TravelDriveSystem:update(dt, shipEntity)
     local state = drive:getState()
 
     -- Toggle travel drive with dedicated key (T)
-    if ShipActions.TravelDrive:isPressed() then
+    if readInput and ShipActions.TravelDrive:isPressed() then
         if state == "idle" then
             drive:setState("charging")
             drive:setChargeTime(0)

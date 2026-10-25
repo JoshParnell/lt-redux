@@ -146,6 +146,32 @@ Results become JSON. Sequences become arrays and other tables objects, down
 to `depth` levels and at most 100 entries per table. Functions, FFI values
 such as `Vec3f`, cycles and deeper tables become their `tostring`.
 
+### Lua helpers
+
+`lua` and `wait` code can use the global `Automation`, the module in
+`script/Shared/Tools/Automation.lua`, loaded on first use. Targets are
+entities or text matched against entity names, nearest first (`"Planet"`,
+`"Station 1"`). Distances and speeds are physics units, and fields ending in
+`Hud` format them the way the HUD does.
+
+| Helper | Does |
+|--------|------|
+| `state()` | Game state, pause, camera mode, pause menu, map, HUD, focus and window |
+| `ship()` | The player ship entity |
+| `entities{match=, within=, near=, limit=}` | Entities with a rigid body, nearest first |
+| `find(text)` | The nearest entity whose name contains `text` |
+| `nav(target)` | Distance to the target's surface, speed, and the target's direction in the ship's frame |
+| `aimAt(target)` | Turn the ship to face the target instantly |
+| `placeNear(target, altitude)` | Move the ship to `altitude` above the target's surface, facing it |
+| `flyTo(target)` | Engage the game's autopilot toward the target |
+| `autopilot()` | Autopilot state; wait on `not Automation.autopilot().active` |
+| `stop()` | Disengage the autopilot |
+| `keyFor(action, negative)` | Name of the key bound to an input action, as the `action` tool uses |
+
+`placeNear` and `aimAt` set up a scene instantly. `flyTo` exercises the real
+autopilot, which has no obstacle avoidance and uses the travel drive only far
+from its target, so nearby trips run at normal cruise speed.
+
 ### UI
 
 `ui` lists the widgets of the last laid-out HmGui frame. By default it lists
@@ -188,6 +214,9 @@ The tools mirror the API, plus:
 - `stop`
 - `logs`: the game log, filtered by level or regex. The full log is
   `target/automation/ltr.log`.
+- `action`: press the key bound to an input action such as
+  `ShipActions.Dock`, so tests follow the bindings rather than hardcoding
+  keys.
 
 Input tools and `step` and `wait` take `screenshot` to capture the frame
 after they finish. Each reply lists new warnings and errors from the game log.

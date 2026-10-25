@@ -49,6 +49,11 @@ Drives Limit Theory Redux for testing changes. Typical loop: build, launch, act
 - lua runs on the game's main thread between frames. Code is evaluated as an
   expression when it parses as one. The game forbids creating globals, so use
   locals or rawset(_G, ...). Results come back as JSON.
+- lua and wait code can use the Automation helpers (script/Shared/Tools/Automation.lua):
+  state(), ship(), entities{match=, within=, limit=}, find(text), nav(target),
+  aimAt(target), placeNear(target, altitude), flyTo(target), autopilot(), stop().
+  Targets are entities or name text such as "Planet" or "Station 1". Prefer flyTo
+  (the game's autopilot) or placeNear over steering by hand.
 - Every reply starts with the frame, game time and clock, and lists new
   warnings and errors from the game log.
 - Rebuild (build) after changing Rust code; Lua changes only need a relaunch.
@@ -269,8 +274,8 @@ def report(result, image=None):
     return [text, Image(data=image, format="png")] if image else text
 
 
-def act(command, args, screenshot, timeout=60):
-    result = game.request(command, args, timeout)
+def act(command, args, screenshot, timeout=60, extra=None):
+    result = {**game.request(command, args, timeout), **(extra or {})}
     if not screenshot:
         return report(result)
     meta, png = game.request("screenshot", {})
@@ -462,6 +467,18 @@ def click(
     else:
         args |= {"x": x, "y": y}
     return act("click", args, screenshot)
+
+
+@tool
+def action(name: str, action: str = "tap", frames: int = 1, negative: bool = False, screenshot: bool = False):
+    """Press the key bound to an input action, such as ShipActions.Dock or
+    GeneralActions.CycleCamera (modules in script/Input/ActionBindings), so tests
+    follow the bindings. negative picks the second key of a two-key axis such as
+    ShipActions.ThrustZ. action and frames work as in key."""
+    code = f"Automation.keyFor({json.dumps(name)}, {'true' if negative else 'false'})"
+    key = game.request("lua", {"code": code})["result"]
+    args = {"key": key, "action": action, "frames": frames}
+    return act("key", args, screenshot, frame_timeout(frames), extra={"key": key})
 
 
 @server.tool(name="type", structured_output=False)

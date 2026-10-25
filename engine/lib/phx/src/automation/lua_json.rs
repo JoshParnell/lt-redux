@@ -3,13 +3,30 @@ use std::ffi::c_void;
 
 use mlua::{Function, Lua, MultiValue, Table};
 use serde_json::{Map, Value};
+use tracing::warn;
 
 pub(super) const DEFAULT_DEPTH: usize = 4;
 const MAX_ENTRIES: usize = 100;
 const MAX_NODES: usize = 5000;
 
+/// Make script/Shared/Tools/Automation.lua the global `Automation`, loading it on first use.
+/// A broken module only logs, so the rest of Lua still works while it's being edited.
+pub(super) fn expose_helpers(lua: &Lua) {
+    let result = lua
+        .load(
+            "if rawget(_G, 'Automation') == nil then \
+             rawset(_G, 'Automation', require('Shared.Tools.Automation')) end",
+        )
+        .set_name("=automation")
+        .exec();
+    if let Err(err) = result {
+        warn!("Automation helpers failed to load: {err}");
+    }
+}
+
 /// Run `code` as an expression if it parses as one, otherwise as a chunk.
 pub(super) fn eval(lua: &Lua, code: &str, depth: usize) -> Result<Value, String> {
+    expose_helpers(lua);
     let chunk = lua
         .load(format!("return {code}"))
         .set_name("=automation")

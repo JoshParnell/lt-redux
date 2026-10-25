@@ -383,9 +383,9 @@ impl Automation {
         let timeout = arg_u64(args, "timeout", 600)?;
         let fast = args.get("fast").and_then(Value::as_bool).unwrap_or(false);
 
-        let predicate = engine
-            .lua
-            .as_ref()
+        let lua = engine.lua.as_ref();
+        lua_json::expose_helpers(&lua);
+        let predicate = lua
             .load(format!("return ({condition})"))
             .set_name("=wait")
             .into_function()

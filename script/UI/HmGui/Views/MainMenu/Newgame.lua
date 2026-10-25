@@ -65,7 +65,7 @@ end
 
 ---@param seed integer|nil
 local function newGame(seed)
-    local seed = seed or rng:get64()
+    local seed = seed or __seed__ or rng:get64()
 
     -- Route through the app state's scene builder (UniverseManager +
     -- Rulesets + SolarSystemVisualizer) via the seam the state exposes

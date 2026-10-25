@@ -29,6 +29,9 @@ pub struct EngineSettings {
     pub stats_port: u16,
     /// `None` leaves present mode under script control.
     pub present_mode: Option<PresentMode>,
+    /// `None` lets the app pick.
+    pub seed: Option<u64>,
+    pub autostart: bool,
 }
 
 /// Mirrors `phx::window::PresentMode`. Kept as a separate type (rather than

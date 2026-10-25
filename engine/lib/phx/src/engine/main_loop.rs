@@ -45,6 +45,16 @@ impl ApplicationHandler for MainLoop {
                     .unwrap();
             }
 
+            // Defined even when unset: scripts read them after GlobalRestrict is on.
+            let seed = match self.settings.seed {
+                Some(seed) => mlua::Value::Number(seed as f64),
+                None => mlua::Value::Boolean(false),
+            };
+            globals.set("__seed__", seed).unwrap();
+            globals
+                .set("__autostart__", self.settings.autostart)
+                .unwrap();
+
             lua.load(&*self.settings.entry_point)
                 .exec()
                 .unwrap_or_else(|e| {

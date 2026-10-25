@@ -126,10 +126,9 @@ function LimitTheoryRedux:initMainMenu(isAppInit)
 
     UIPageMainMenu:setView("Title")
 
-    -- Autonomous test hook: LTR_AUTOSTART=1 skips the main menu and jumps
-    -- straight into gameplay (same flow as clicking "New Game").
-    if os.getenv("LTR_AUTOSTART") == "1" then
-        self:startGame(rng:get64())
+    -- ltr --autostart skips the main menu (same flow as clicking "New Game").
+    if __autostart__ then
+        self:startGame(__seed__ or rng:get64())
     else
         -- Menu phase: spawn a star system behind the menu (the legacy
         -- GameView background path is gone; the modern pipeline renders it).

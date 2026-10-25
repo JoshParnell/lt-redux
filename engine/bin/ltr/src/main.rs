@@ -65,6 +65,12 @@ struct Cli {
     /// without editing scripts.
     #[arg(long, value_enum)]
     present_mode: Option<PresentModeArg>,
+    /// World seed, for apps that generate one
+    #[arg(long)]
+    seed: Option<u64>,
+    /// Skip the main menu and start a game
+    #[arg(long)]
+    autostart: bool,
     /// Optional application name
     app_name: Option<String>,
 }
@@ -98,6 +104,8 @@ pub fn main() {
         #[cfg(feature = "stats-server")]
         stats_port: cli.stats_server,
         present_mode: cli.present_mode.map(PresentMode::from),
+        seed: cli.seed,
+        autostart: cli.autostart,
     }));
 
     #[allow(unsafe_code)]

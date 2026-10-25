@@ -591,7 +591,7 @@ function LimitTheoryRedux:createStation(position, label)
     end
 
     table.insert(self.stations, station)
-    self.stationNames[station] = label
+    self.stationNames[station.id] = label
     table.insert(self.labeledEntities, { entity = station, label = label })
     return station
 end
@@ -664,7 +664,8 @@ end
 
 ---@return string
 function LimitTheoryRedux:getDockedStationName()
-    return self.stationNames and self.stationNames[self:getDockedStation()] or "Station"
+    local station = self:getDockedStation()
+    return station and self.stationNames and self.stationNames[station.id] or "Station"
 end
 
 --- Forget docking without undocking (teardown).
@@ -722,7 +723,7 @@ function LimitTheoryRedux:onRender(data)
             end
 
             if self.dockableStation and self.mapMode == 0 then
-                DrawEx.TextAdditive('Unageo-Medium', "Press F to dock at " .. self.stationNames[self.dockableStation],
+                DrawEx.TextAdditive('Unageo-Medium', "Press F to dock at " .. self.stationNames[self.dockableStation.id],
                     16, 0, Window:height() * 0.7, Window:width(), 24, 0.9, 0.9, 0.9, 0.9, 0.5, 0.5)
             end
 

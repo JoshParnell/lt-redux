@@ -91,8 +91,12 @@ function Material:reloadShader()
     local shader = Cache.Shader(self.vs, self.fs)
     if not shader then return end
 
+    -- ShaderState holds uniform locations, which can move in a reloaded program
     self.shaderState = ShaderState.Create(shader)
     self.shader = shader
+    for _, tex in pairs(self.textures) do
+        tex:setTextureToShaderState(self.shaderState)
+    end
 
     local function cache(vars)
         for _, v in ipairs(vars) do
@@ -107,21 +111,6 @@ function Material:reloadShader()
     -- Set const vars
     for _, v in ipairs(self.constShaderVars) do
         v:setShaderVar(nil, shader, nil)
-    end
-
-    -- Rebind textures
-    for _, tex in pairs(self.textures) do
-        local name = tex.texName
-        if shader:hasVariable(name) then
-            local loc = shader:getVariable(name)
-            local fnName = ({
-                [Enums.UniformType.Tex2D]   = "iSetTex2D",
-                [Enums.UniformType.TexCube] = "iSetTexCube",
-            })[tex.texType]
-            if fnName and shader[fnName] then
-                shader[fnName](shader, loc, tex.tex)
-            end
-        end
     end
 end
 

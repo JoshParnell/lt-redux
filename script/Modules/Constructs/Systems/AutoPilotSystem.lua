@@ -278,8 +278,8 @@ function AutoPilotSystem:update(dt, shipEntity)
     -- Safe arrival distance: 1.5x object radius, minimum 50 units
     local safeRange = math.max(50, targetRadius * 1.5)
 
-    -- Arrival check
-    if dist < safeRange then
+    -- Arrival check; inside the safe range the desired speed is zero, so it brakes until slow
+    if dist < safeRange and speed <= Config.game.shipFlight.maxSpeedGame then
         Log.Info("AutoPilot: arrived at destination (dist=%.0f, safe=%.0f)", dist, safeRange)
         self:disengage(shipEntity)
         return
@@ -312,12 +312,14 @@ function AutoPilotSystem:update(dt, shipEntity)
     if steerDist < 1 then steerDist = 1 end
     local dirX, dirY, dirZ = steerDx / steerDist, steerDy / steerDist, steerDz / steerDist
 
-    -- Desired speed: deceleration curve
+    -- Desired speed. Drag bleeds speed at rate linearDrag, so after thrust stops the ship
+    -- coasts about speed / linearDrag: keep that within half the remaining distance. Close
+    -- in, the thrust-braking curve allows more.
     local maxDecel = cfg.thrustForward / rb:getMass()
     local brakingDist = math.max(0, dist - safeRange)
-    local desiredApproachSpeed = math.min(
+    local desiredApproachSpeed = math.max(
         math.sqrt(2.0 * maxDecel * brakingDist),
-        dist * 0.5
+        brakingDist * cfg.linearDrag * 0.5
     )
 
     -- Desired velocity = approach direction * approach speed + target's velocity (match orbit)
@@ -363,7 +365,8 @@ function AutoPilotSystem:update(dt, shipEntity)
         )))
     end
 
-    -- Smart travel drive: smooth speed curve based on distance
+    -- Travel drive: its multiplier sets top speed (cruise x mult), so match it to the
+    -- approach speed. Engage once that's worth it with the nose on course; cut it close in.
     local drive = shipEntity:get(ConstructComponents.TravelDrive)
     if drive then
         local autoPilotCfg = Config.game.autoPilot or {}
@@ -372,43 +375,22 @@ function AutoPilotSystem:update(dt, shipEntity)
         local GravityWellSystem = require("Modules.Physics.Systems.GravityWellSystem")
         local zoneMax = GravityWellSystem:getMaxDriveSpeed()
 
-        -- Desired drive multiplier based on distance (smooth approach curve)
-        -- Far: full zone speed. Close: ramp down to 1x for final approach.
-        local finalApproachDist = safeRange * 10   -- within this: no drive
-        local rampStartDist = finalApproachDist * 5  -- start reducing from here
-        local driveEngageDist = rampStartDist * 2    -- engage only beyond this
-
-        -- Distance-proportional speed cap: faster when far, slower when close
-        -- This ensures comfortable deceleration regardless of target size
-        local distBasedMax = math.max(1, math.sqrt(dist / math.max(1, safeRange)) * 5)
-        local speedCap = math.min(zoneMax, distBasedMax)
-
-        local desiredMult = 1.0
-        if dist > rampStartDist then
-            desiredMult = speedCap
-        elseif dist > finalApproachDist then
-            local t = (dist - finalApproachDist) / (rampStartDist - finalApproachDist)
-            desiredMult = 1.0 + (speedCap - 1.0) * t * t
-        end
+        local cruise = cfg.thrustForward / (rb:getMass() * cfg.linearDrag)
+        local desiredMult = Math.Clamp(desiredApproachSpeed / cruise, 1, zoneMax)
 
         if drive:isActive() then
-            if dist < finalApproachDist then
-                -- Final approach: disengage
+            if desiredMult < 2 then
                 drive:setState("decelerating")
-            else
-                -- Clamp multiplier to desired (smooth decel)
-                local currentMult = drive:getCurrentMult()
-                if currentMult > desiredMult * 1.1 then
-                    drive:setCurrentMult(currentMult * 0.95)  -- 5% per frame reduction
-                end
+            elseif drive:getCurrentMult() > desiredMult then
+                drive:setCurrentMult(desiredMult)
             end
         end
 
-        -- Engage drive when far enough and after delay
         local elapsed = ap:getElapsed() + dt
         ap:setElapsed(elapsed)
 
-        if enableTravelDrive and elapsed > travelDriveDelay and dist > driveEngageDist then
+        local onCourse = fwd.x * dirX + fwd.y * dirY + fwd.z * dirZ > 0.98
+        if enableTravelDrive and elapsed > travelDriveDelay and desiredMult > 4 and onCourse then
             if not drive:isActive() and drive:getState() == "idle" then
                 drive:setState("charging")
                 drive:setChargeTime(0)

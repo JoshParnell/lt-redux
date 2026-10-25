@@ -1,8 +1,9 @@
 local Action          = require("Modules.Constructs.Actions.Action")
 local AutoPilotSystem = require("Modules.Constructs.Systems.AutoPilotSystem")
+local DockingSystem   = require("Modules.Constructs.Systems.DockingSystem")
 
---- Fly to an entity or position with the ship's autopilot. Finishes when the autopilot
---- stops, on arrival or because something cancelled it.
+--- Fly to an entity or position with the ship's autopilot, undocking first. Finishes when
+--- the autopilot stops, on arrival or because something cancelled it.
 ---@class FlyToAction: Action
 ---@overload fun(target: Entity|Position): FlyToAction
 local FlyTo = Subclass("FlyTo", Action, function(self, target)
@@ -22,7 +23,10 @@ local function engage(self, e)
     end
 end
 
-function FlyTo:onStart(e) engage(self, e) end
+function FlyTo:onStart(e)
+    DockingSystem:undock(e)
+    engage(self, e)
+end
 
 function FlyTo:onResume(e) engage(self, e) end
 

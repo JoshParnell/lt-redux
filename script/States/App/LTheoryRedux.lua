@@ -636,6 +636,7 @@ function LimitTheoryRedux:dockAt(station)
     end
 
     self.dockableStation = nil
+    self.dockedView = true
     self.player:setInputBlocked(true)
     UIRouter:setCurrentPage("Gameplay")
     UIPageGameplay:setView("Docked")
@@ -645,6 +646,12 @@ function LimitTheoryRedux:undock()
     if not self:getDockedStation() then return end
 
     DockingSystem:undock(self.playerShip)
+    self:closeDockedView()
+end
+
+--- Leave the docked screen and give the player back flight controls and the ship camera.
+function LimitTheoryRedux:closeDockedView()
+    self.dockedView = false
     UIRouter:clearCurrentPage()
     self.player:setInputBlocked(false)
     self.player:stopOrbitingEntity()
@@ -668,6 +675,7 @@ function LimitTheoryRedux:clearDockState()
         self.player:stopOrbitingEntity()
     end
     self.dockableStation = nil
+    self.dockedView = false
 end
 
 ---@param data EventData
@@ -895,6 +903,8 @@ function LimitTheoryRedux:onStateSim(data)
     MemoryReporter:update(dt)
 
     ActionSystem:update(dt)
+    -- Orders such as FlyTo undock the ship themselves
+    if self.dockedView and not self:getDockedStation() then self:closeDockedView() end
     AutoPilotSystem:updateShips(dt, self.playerShip)
     self.player:update(dt)
     self.world:update(dt)

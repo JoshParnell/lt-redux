@@ -3,6 +3,7 @@ local ConstructComponents = require("Modules.Constructs.Components")
 local CoreComponents      = require("Modules.Core.Components")
 local RenderComp          = require("Modules.Rendering.Components").Render
 local AutoPilotSystem     = require("Modules.Constructs.Systems.AutoPilotSystem")
+local ActionSystem        = require("Modules.Constructs.Systems.ActionSystem")
 
 --- Docking System — parks a ship inside a station while docked:
 --- kinematic, non-collidable and hidden. UI, camera and input are the caller's.
@@ -69,7 +70,7 @@ function DockingSystem:getDockedStation(ship)
     return docked and docked:getStation()
 end
 
---- Park the ship inside the station
+--- Park the ship inside the station, dropping its orders
 ---@param ship Entity
 ---@param station Entity
 ---@return boolean docked
@@ -77,6 +78,7 @@ function DockingSystem:dock(ship, station)
     local shipRb, stationRb = getBody(ship), getBody(station)
     if not shipRb or not stationRb then return false end
 
+    ActionSystem:clear(ship)
     AutoPilotSystem:disengage(ship)
     local drive = ship:get(ConstructComponents.TravelDrive)
     if drive then

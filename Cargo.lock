@@ -2892,6 +2892,7 @@ dependencies = [
  "regex",
  "rodio",
  "serde",
+ "serde_json",
  "serde_yaml",
  "strum",
  "strum_macros",

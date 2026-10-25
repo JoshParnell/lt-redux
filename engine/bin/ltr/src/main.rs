@@ -71,8 +71,32 @@ struct Cli {
     /// Skip the main menu and start a game
     #[arg(long)]
     autostart: bool,
+    /// Serve the automation API on this port; 0 picks a free one (requires
+    /// the `automation` cargo feature, see doc/AUTOMATION.md)
+    #[arg(long)]
+    #[cfg(feature = "automation")]
+    automation: Option<u16>,
+    /// Window size of an automation run, as WIDTHxHEIGHT
+    #[arg(long, default_value = "1280x720", value_parser = parse_window_size)]
+    #[cfg(feature = "automation")]
+    window_size: (u32, u32),
+    /// Show the automation window normally instead of inactive behind other windows
+    #[arg(long)]
+    #[cfg(feature = "automation")]
+    foreground: bool,
+    /// Settings directory of an automation run, so it never touches the real one
+    #[arg(long)]
+    #[cfg(feature = "automation")]
+    pref_dir: Option<String>,
     /// Optional application name
     app_name: Option<String>,
+}
+
+#[cfg(feature = "automation")]
+fn parse_window_size(value: &str) -> Result<(u32, u32), String> {
+    let (width, height) = value.split_once('x').ok_or("expected WIDTHxHEIGHT")?;
+    let parse = |s: &str| s.parse::<u32>().map_err(|err| err.to_string());
+    Ok((parse(width)?, parse(height)?))
 }
 
 #[cfg_attr(not(windows), link(name = "phx", kind = "dylib"))]
@@ -106,6 +130,15 @@ pub fn main() {
         present_mode: cli.present_mode.map(PresentMode::from),
         seed: cli.seed,
         autostart: cli.autostart,
+        #[cfg(feature = "automation")]
+        automation: cli.automation.map(|port| internal::AutomationSettings {
+            port,
+            window_size: cli.window_size,
+            foreground: cli.foreground,
+            pref_dir: cli.pref_dir.unwrap_or_default(),
+        }),
+        #[cfg(not(feature = "automation"))]
+        automation: None,
     }));
 
     #[allow(unsafe_code)]

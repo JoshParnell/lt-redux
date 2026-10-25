@@ -1,13 +1,15 @@
 use std::cell::RefCell;
 
 use glam::*;
-use internal::EngineSettings;
+use internal::{AutomationSettings, EngineSettings};
 use mlua::{Function, Lua};
 use tracing::*;
 use winit::dpi::*;
+use winit::event::DeviceId;
 use winit::event_loop::*;
 
 use super::{EventBus, MainLoop, TaskQueue};
+use crate::audio::Audio;
 use crate::input::*;
 use crate::logging::init_log;
 use crate::render::Renderer;
@@ -35,6 +37,9 @@ pub struct Engine {
     /// Whether `changed_window` has already logged that a script's present
     /// mode request was overridden - logged once, not every frame.
     present_mode_override_logged: bool,
+    /// Set when an automation client drives the run (ltr `--automation`): OS
+    /// input is ignored and the window never takes focus, the cursor or the screen.
+    pub automation: Option<&'static AutomationSettings>,
 }
 
 // This thread local variable contains a ref counted instance of the current Lua VM.
@@ -112,10 +117,25 @@ impl Engine {
             info!("Present mode forced to {mode:?} by --present-mode");
             window.present_mode = mode;
         }
+        if let Some(automation) = &settings.automation {
+            let (width, height) = automation.window_size;
+            // Scale 1 keeps UI layout and screenshot pixels independent of the monitor's DPI.
+            window.resolution =
+                WindowResolution::new(width as f32, height as f32).with_scale_factor_override(1.0);
+            window.focused = true;
+            if !automation.pref_dir.is_empty() {
+                Directory::override_pref_path(&automation.pref_dir);
+            }
+            Audio::mute_all();
+        }
         let cache = CachedWindow {
             window: window.clone(),
         };
-        let mut winit_window = WinitWindow::new(event_loop, &window);
+        let background = settings
+            .automation
+            .as_ref()
+            .is_some_and(|automation| !automation.foreground);
+        let mut winit_window = WinitWindow::new(event_loop, &window, background);
         winit_window.resume();
         let scale_factor = window.scale_factor();
 
@@ -154,6 +174,7 @@ impl Engine {
             renderer,
             present_mode_override,
             present_mode_override_logged: false,
+            automation: settings.automation.as_ref(),
         }
     }
 
@@ -180,6 +201,8 @@ impl Engine {
         let mut app_state = MainLoop {
             engine: None,
             settings,
+            #[cfg(feature = "automation")]
+            automation: None,
         };
 
         if let Err(err) = build_event_loop().run_app(&mut app_state) {
@@ -212,6 +235,15 @@ impl Engine {
                     self.window.set_cursor_position(Some(Vec2::new(*x, *y)))
                 }
             }
+        }
+
+        // Scripts can't resize an automation window or make it fullscreen.
+        if let Some(automation) = self.automation {
+            let (width, height) = automation.window_size;
+            self.window.mode = WindowMode::Windowed;
+            self.window
+                .resolution
+                .set_physical_resolution(width, height);
         }
 
         // Handle suspend/resume
@@ -302,7 +334,10 @@ impl Engine {
         }
 
         // === Handle cursor position ===
-        if self.window.physical_cursor_position() != self.cache.window.physical_cursor_position() {
+        if self.automation.is_none()
+            && self.window.physical_cursor_position()
+                != self.cache.window.physical_cursor_position()
+        {
             if let Some(physical_position) = self.window.physical_cursor_position() {
                 let inner_size = self.winit_window.window().inner_size();
 
@@ -327,7 +362,8 @@ impl Engine {
         // A grab only holds while focused, so wait for focus (and re-apply on
         // regaining it) rather than taking focus from the user's other windows.
         let gained_focus = self.window.focused && !self.cache.window.focused;
-        if self.window.focused
+        if self.automation.is_none()
+            && self.window.focused
             && (self.window.cursor.grab_mode != self.cache.window.cursor.grab_mode || gained_focus)
         {
             attempt_grab(self.winit_window.window(), self.window.cursor.grab_mode);
@@ -425,16 +461,26 @@ impl Engine {
 
         // === Handle internal cursor position requests ===
         if let Some(position) = self.window.internal.take_cursor_position_request() {
-            self.winit_window
-                .window()
-                .set_cursor_position(PhysicalPosition::new(position.x, position.y))
-                .unwrap_or_else(|err| {
-                    error!("Could not set cursor position: {:?}", err);
+            if self.automation.is_some() {
+                // Warp the automation mouse instead of the user's cursor.
+                self.input.update_mouse(DeviceId::dummy(), |state| {
+                    state.update_position(position.x as f32, position.y as f32)
                 });
+            } else {
+                self.winit_window
+                    .window()
+                    .set_cursor_position(PhysicalPosition::new(position.x, position.y))
+                    .unwrap_or_else(|err| {
+                        error!("Could not set cursor position: {:?}", err);
+                    });
+            }
         }
 
         // === Focus ===
-        if self.window.focused != self.cache.window.focused && self.window.focused {
+        if self.automation.is_none()
+            && self.window.focused != self.cache.window.focused
+            && self.window.focused
+        {
             self.winit_window.window().focus_window();
         }
 

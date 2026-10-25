@@ -721,6 +721,15 @@ impl CommandExecutor {
                 let _ = reply_tx.send(data);
             }
 
+            RenderCommand::ReadBackbufferPixels {
+                width,
+                height,
+                reply_tx,
+            } => {
+                let data = self.cmd_read_backbuffer_pixels(width, height);
+                let _ = reply_tx.send(data);
+            }
+
             // === Framebuffer Operations ===
             RenderCommand::PushFramebuffer {
                 id: _,

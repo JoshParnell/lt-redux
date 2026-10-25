@@ -1,12 +1,13 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use glam::Quat;
-use kira::StartTime;
 use kira::manager::{AudioManager, AudioManagerSettings, Capacities};
 use kira::spatial::emitter::{EmitterDistances, EmitterSettings};
 use kira::spatial::listener::{ListenerHandle, ListenerSettings};
 use kira::spatial::scene::{SpatialSceneHandle, SpatialSceneSettings};
 use kira::tween::{Easing, Tween};
+use kira::{StartTime, Volume};
 
 use super::{Sound, SoundInstance};
 use crate::math::*;
@@ -26,6 +27,15 @@ pub struct Audio {
     audio_origin: Position,
 }
 
+static MUTED: AtomicBool = AtomicBool::new(false);
+
+impl Audio {
+    /// Silence every `Audio` created from now on.
+    pub fn mute_all() {
+        MUTED.store(true, Ordering::Relaxed);
+    }
+}
+
 #[luajit_ffi_gen::luajit_ffi]
 impl Audio {
     #[bind(name = "Create")]
@@ -39,6 +49,11 @@ impl Audio {
         };
 
         let mut audio_manager = AudioManager::new(settings).expect("Cannot create audio manager");
+        if MUTED.load(Ordering::Relaxed) {
+            audio_manager
+                .main_track()
+                .set_volume(Volume::Amplitude(0.0), Tween::default());
+        }
 
         let mut spatial_scene = audio_manager
             .add_spatial_scene(

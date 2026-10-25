@@ -937,6 +937,18 @@ impl Renderer {
         rx.recv().unwrap_or_default()
     }
 
+    /// Queue a readback of the back buffer without waiting for it. Submitted
+    /// before `end_frame_triple_buffered`, it captures the finished frame.
+    pub fn request_backbuffer_pixels(&mut self, width: i32, height: i32) -> Receiver<Vec<u8>> {
+        let (tx, rx) = bounded(1);
+        self.submit(RenderCommand::ReadBackbufferPixels {
+            width,
+            height,
+            reply_tx: tx,
+        });
+        rx
+    }
+
     // === Framebuffer Operations ===
 
     pub fn push_framebuffer(&mut self, id: u64, width: i32, height: i32) {

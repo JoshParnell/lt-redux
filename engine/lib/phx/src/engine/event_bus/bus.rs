@@ -46,6 +46,8 @@ struct MessageRequest {
 pub struct EventBus {
     delta_time: f64,
     frame_timer: FrameTimer,
+    /// Replaces the measured frame delta, so an automation clock can step or freeze time.
+    fixed_delta: Option<f64>,
     frame_time_scale: f64,
     event_messages: HashMap<EventId, EventMessage>,
     operations: Vec<EventBusOperation>,
@@ -84,6 +86,7 @@ impl EventBus {
         Self {
             delta_time: 0.0,
             frame_timer: FrameTimer::new(),
+            fixed_delta: None,
             frame_time_scale: 1.0,
             event_messages,
             operations: vec![],
@@ -94,6 +97,15 @@ impl EventBus {
             current_frame_stage: FrameStage::first(),
             current_message_request: None,
         }
+    }
+
+    pub fn set_fixed_delta(&mut self, delta: Option<f64>) {
+        self.fixed_delta = delta;
+    }
+
+    /// Scaled delta of the most recent frame stage.
+    pub fn delta_time(&self) -> f64 {
+        self.delta_time
     }
 
     fn add_subscriber(
@@ -268,8 +280,8 @@ impl EventBus {
         // println!("Entering next_event");
 
         if self.current_frame_stage != self.prev_frame_stage {
-            self.delta_time =
-                self.frame_timer.update(self.current_frame_stage) * self.frame_time_scale;
+            let elapsed = self.frame_timer.update(self.current_frame_stage);
+            self.delta_time = self.fixed_delta.unwrap_or(elapsed) * self.frame_time_scale;
             self.prev_frame_stage = self.current_frame_stage;
         }
 

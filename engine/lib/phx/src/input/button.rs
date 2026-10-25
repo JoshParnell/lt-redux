@@ -14,6 +14,8 @@ macro_rules! buttons {
         }
 
         impl Button {
+            pub const ALL: &[Button] = &[$($(Self::$button_item,)+)+];
+
             $(
                 pub fn $as_func(&self) -> Option<$device_name> {
                     match self {

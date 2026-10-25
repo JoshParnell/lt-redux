@@ -116,7 +116,12 @@ pub struct WinitWindow {
 }
 
 impl WinitWindow {
-    pub fn new(event_loop: &winit::event_loop::ActiveEventLoop, window: &Window) -> Self {
+    /// A `background` window opens inactive behind the user's windows.
+    pub fn new(
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        window: &Window,
+        background: bool,
+    ) -> Self {
         info!("Create new window: {}", window.title);
 
         let mut window_attributes = winit::window::Window::default_attributes();
@@ -163,6 +168,12 @@ impl WinitWindow {
             .with_theme(window.window_theme.map(winit::window::Theme::from))
             .with_resizable(window.resizable)
             .with_decorations(window.decorations);
+
+        if background {
+            window_attributes = window_attributes
+                .with_active(false)
+                .with_window_level(winit::window::WindowLevel::AlwaysOnBottom);
+        }
 
         let constraints = window.resize_constraints.check_constraints();
         let min_inner_size = LogicalSize {

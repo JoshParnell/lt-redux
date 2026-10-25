@@ -461,6 +461,14 @@ pub enum RenderCommand {
         reply_tx: Sender<Vec<u8>>,
     },
 
+    /// Readback of the window's back buffer (RGBA8, bottom row first),
+    /// regardless of which framebuffer is bound. Used for screenshots.
+    ReadBackbufferPixels {
+        width: i32,
+        height: i32,
+        reply_tx: Sender<Vec<u8>>,
+    },
+
     // === Framebuffer Operations ===
     /// Create and bind a new framebuffer, returning its handle via the FBO stack
     /// This is used by RenderTarget::push()
@@ -823,7 +831,8 @@ impl RenderCommand {
             | ReadTexture3DData { .. }
             | ReadTextureCubeFaceData { .. }
             | SamplePixel2DByResource { .. }
-            | ReadFramebufferPixels { .. } => CommandCategory::Readback,
+            | ReadFramebufferPixels { .. }
+            | ReadBackbufferPixels { .. } => CommandCategory::Readback,
 
             // === Framebuffer Operations ===
             PushFramebuffer { .. }

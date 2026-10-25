@@ -6,6 +6,8 @@
 #![allow(clippy::module_inception)] // Allow nested module with the same name as parent
 
 pub mod audio;
+#[cfg(feature = "automation")]
+pub mod automation;
 pub mod engine;
 pub mod error;
 pub mod input;

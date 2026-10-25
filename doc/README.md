@@ -11,3 +11,4 @@
    - [HmGui](../script/UI/HmGui/README.md)
 1. [Full structure](LTheory%20Full%20Restructure.md)
 1. [Control keys](GameControlKeys.txt)
+1. [Automation server](AUTOMATION.md)

@@ -115,6 +115,11 @@ impl HmGui {
         self.mouse_over_widget_hash[FocusType::Mouse as usize]
     }
 
+    /// Root widgets of the last laid-out frame, bottom layer first.
+    pub fn layer_roots(&self) -> impl Iterator<Item = &Rf<HmGuiWidget>> {
+        self.layers.iter().map(|layer| &layer.root)
+    }
+
     /// Add a new widget into the current container.
     fn init_widget(&mut self, item: WidgetItem) -> Rf<HmGuiWidget> {
         let parent_rf = self.container();

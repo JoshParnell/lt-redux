@@ -14,6 +14,31 @@ use crate::window::*;
 pub struct MainLoop {
     pub engine: Option<Engine>,
     pub settings: &'static EngineSettings,
+    #[cfg(feature = "automation")]
+    pub automation: Option<crate::automation::Automation>,
+}
+
+/// Window events an automation run ignores, so the user's mouse and keyboard
+/// can't interfere with the virtual input.
+fn is_os_input(event: &WindowEvent) -> bool {
+    matches!(
+        event,
+        WindowEvent::KeyboardInput { .. }
+            | WindowEvent::CursorMoved { .. }
+            | WindowEvent::CursorEntered { .. }
+            | WindowEvent::CursorLeft { .. }
+            | WindowEvent::MouseInput { .. }
+            | WindowEvent::MouseWheel { .. }
+            | WindowEvent::PinchGesture { .. }
+            | WindowEvent::RotationGesture { .. }
+            | WindowEvent::Touch(_)
+            | WindowEvent::Focused(_)
+            | WindowEvent::ScaleFactorChanged { .. }
+            | WindowEvent::DroppedFile(_)
+            | WindowEvent::HoveredFile(_)
+            | WindowEvent::HoveredFileCancelled
+            | WindowEvent::Ime(_)
+    )
 }
 
 impl ApplicationHandler for MainLoop {
@@ -55,6 +80,15 @@ impl ApplicationHandler for MainLoop {
                 .set("__autostart__", self.settings.autostart)
                 .unwrap();
 
+            #[cfg(feature = "automation")]
+            {
+                self.automation = self
+                    .settings
+                    .automation
+                    .as_ref()
+                    .map(crate::automation::Automation::start);
+            }
+
             lua.load(&*self.settings.entry_point)
                 .exec()
                 .unwrap_or_else(|e| {
@@ -86,6 +120,10 @@ impl ApplicationHandler for MainLoop {
         // If exit_app is true, then exit the event loop.
         if engine.exit_app {
             event_loop.exit();
+        }
+
+        if engine.automation.is_some() && is_os_input(&event) {
+            return;
         }
 
         match event {
@@ -269,6 +307,9 @@ impl ApplicationHandler for MainLoop {
         let Some(engine) = self.engine.as_mut() else {
             return;
         };
+        if engine.automation.is_some() {
+            return;
+        }
 
         match event {
             DeviceEvent::MouseMotion { delta } => {
@@ -312,14 +353,27 @@ impl ApplicationHandler for MainLoop {
             engine.winit_window.window().set_visible(true);
         }
 
+        #[cfg(feature = "automation")]
+        if let Some(automation) = self.automation.as_mut() {
+            automation.begin_frame(engine);
+        }
+
         // Load all gamepad events
-        engine.input.update_gamepad(|state| state.update());
+        if engine.automation.is_none() {
+            engine.input.update_gamepad(|state| state.update());
+        }
 
         // Tick operations
         // Dispatch engine events
         engine.call_lua("AppEventLoop").unwrap_or_else(|e| {
             panic!("Error calling AppEventLoop: {e}");
         });
+
+        // Before the swap, so screenshots capture this frame.
+        #[cfg(feature = "automation")]
+        if let Some(automation) = self.automation.as_mut() {
+            automation.end_frame(engine);
+        }
 
         // Apply window changes made by a script
         engine.changed_window();

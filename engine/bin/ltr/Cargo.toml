@@ -15,6 +15,8 @@ stats-server = ["internal/stats-server", "phx/stats-server"]
 # Forward phx's single-threaded fallback (executes RenderCommands inline on
 # the calling thread) for A/B comparison against the threaded pipeline.
 immediate = ["phx/immediate"]
+# Forward the automation server so `cargo run -p ltr --features automation` works.
+automation = ["phx/automation"]
 
 [dependencies]
 # workspace crates

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use crossbeam::channel::unbounded;
+use crossbeam::channel::{Receiver, bounded, unbounded};
 use tracing::{error, info};
 
 #[cfg(feature = "stats-server")]
@@ -446,6 +446,12 @@ impl Renderer {
     pub fn read_framebuffer_pixels(&mut self, x: i32, y: i32, width: i32, height: i32) -> Vec<u8> {
         self.executor
             .cmd_read_framebuffer_pixels(x, y, width, height)
+    }
+
+    pub fn request_backbuffer_pixels(&mut self, width: i32, height: i32) -> Receiver<Vec<u8>> {
+        let (tx, rx) = bounded(1);
+        let _ = tx.send(self.executor.cmd_read_backbuffer_pixels(width, height));
+        rx
     }
 
     // === Framebuffer Operations ===

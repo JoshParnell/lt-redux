@@ -1,12 +1,23 @@
 use std::io::ErrorKind;
+use std::path::PathBuf;
+use std::sync::OnceLock;
 use std::{env, fs};
 
 use directories::ProjectDirs;
 use tracing::error;
 
+static PREF_PATH_OVERRIDE: OnceLock<String> = OnceLock::new();
+
 #[repr(C)]
 pub struct Directory {
     pub iterator: fs::ReadDir,
+}
+
+impl Directory {
+    /// Make `get_pref_path` return `path` for the rest of the run.
+    pub fn override_pref_path(path: &str) {
+        let _ = PREF_PATH_OVERRIDE.set(path.into());
+    }
 }
 
 #[luajit_ffi_gen::luajit_ffi]
@@ -62,20 +73,24 @@ impl Directory {
     }
 
     pub fn get_pref_path(org: &str, app: &str) -> Option<String> {
-        if let Some(proj_dirs) = ProjectDirs::from("", org, app) {
-            let path = proj_dirs.data_dir();
+        let path = match PREF_PATH_OVERRIDE.get() {
+            Some(path) => PathBuf::from(path),
+            None => match ProjectDirs::from("", org, app) {
+                Some(proj_dirs) => proj_dirs.data_dir().to_path_buf(),
+                None => {
+                    error!("Cannot get project directory.");
+                    return None;
+                }
+            },
+        };
 
-            if let Err(err) = std::fs::create_dir_all(path) {
-                error!("Cannot create project dir: {path:?}. Error: {err}");
-                None
-            } else if let Some(path_str) = path.to_str() {
-                Some(format!("{path_str}/"))
-            } else {
-                error!("Path is not valid UTF-8: {path:?}");
-                None
-            }
+        if let Err(err) = std::fs::create_dir_all(&path) {
+            error!("Cannot create project dir: {path:?}. Error: {err}");
+            None
+        } else if let Some(path_str) = path.to_str() {
+            Some(format!("{path_str}/"))
         } else {
-            error!("Cannot get project directory.");
+            error!("Path is not valid UTF-8: {path:?}");
             None
         }
     }

@@ -1192,6 +1192,30 @@ impl CommandExecutor {
     }
 
     #[inline(always)]
+    pub(super) fn cmd_read_backbuffer_pixels(&mut self, width: i32, height: i32) -> Vec<u8> {
+        let _sa = self.record_command(CommandCategory::Readback, false, false);
+        let mut data = vec![0u8; (width * height * 4) as usize];
+        unsafe {
+            gl::BindFramebuffer(gl::READ_FRAMEBUFFER, 0);
+            gl::ReadBuffer(gl::BACK);
+            gl::ReadPixels(
+                0,
+                0,
+                width,
+                height,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                data.as_mut_ptr() as *mut _,
+            );
+            gl::BindFramebuffer(
+                gl::READ_FRAMEBUFFER,
+                self.fbo_stack.last().map_or(0, |fbo| fbo.handle),
+            );
+        }
+        data
+    }
+
+    #[inline(always)]
     pub(super) fn cmd_framebuffer_attach_texture_2d(
         &mut self,
         attachment: u32,

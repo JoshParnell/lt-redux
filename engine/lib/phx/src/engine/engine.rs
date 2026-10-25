@@ -324,10 +324,12 @@ impl Engine {
                 .set_cursor(convert_cursor_icon(self.window.cursor.icon));
         }
 
-        if self.window.cursor.grab_mode != self.cache.window.cursor.grab_mode {
-            if !self.winit_window.window().has_focus() {
-                self.winit_window.window().focus_window();
-            }
+        // A grab only holds while focused, so wait for focus (and re-apply on
+        // regaining it) rather than taking focus from the user's other windows.
+        let gained_focus = self.window.focused && !self.cache.window.focused;
+        if self.window.focused
+            && (self.window.cursor.grab_mode != self.cache.window.cursor.grab_mode || gained_focus)
+        {
             attempt_grab(self.winit_window.window(), self.window.cursor.grab_mode);
         }
 

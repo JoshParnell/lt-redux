@@ -6,8 +6,13 @@ and a listing of the UI. It exists so that tools, and AI agents in
 particular, can play the game to check a change, without a person at the
 keyboard.
 
-The server is the `automation` cargo feature of `phx`, an HTTP server
-inside the game, in `engine/lib/phx/src/automation/`.
+It has two parts:
+
+- **The server**, the `automation` cargo feature of `phx`. It's an HTTP
+  server inside the game, in `engine/lib/phx/src/automation/`.
+- **`tools/ltr-mcp`**, an [MCP](https://modelcontextprotocol.io) server that
+  launches the game and exposes the API as tools for Claude Code. It owns the
+  game process, so builds, crashes and restarts come back as tool results.
 
 ## Running with the server
 
@@ -133,3 +138,43 @@ only what matters for driving the UI: interactive widgets (those that check
 for the mouse) labelled with the text inside them, and other visible text.
 `all` lists every widget. The in-game HUD isn't HmGui, so only screenshots
 show it.
+
+## The MCP server
+
+`tools/ltr-mcp/server.py` uses the Python MCP SDK. One-time setup, from the
+repository root:
+
+```bash
+python -m venv tools/ltr-mcp/.venv
+tools/ltr-mcp/.venv/Scripts/python -m pip install -r tools/ltr-mcp/requirements.txt
+claude mcp add --scope local ltr -- "$PWD/tools/ltr-mcp/.venv/Scripts/python.exe" "$PWD/tools/ltr-mcp/server.py"
+```
+
+On macOS and Linux the interpreter is `.venv/bin/python`. `--scope local`
+keeps the registration in your own Claude Code config rather than the
+repository.
+
+Local scope is keyed by the project path exactly as written, drive letter
+case included. On Windows, VS Code opens the folder as `c:\...` while
+terminals use `C:\...`, so register from the spelling your sessions use, or
+from both:
+
+```bash
+cmd //c "cd /d c:\path\to\lt-redux && claude mcp add --scope local ltr -- ..."
+```
+
+The tools mirror the API, plus:
+
+- `build`: `cargo build -p ltr --features automation`. It stops a running
+  game first, because Windows locks its binaries.
+- `launch`: start the game with a fresh settings folder and wait for its
+  first frame.
+- `stop`
+- `logs`: the game log, filtered by level or regex. The full log is
+  `target/automation/ltr.log`.
+
+Input tools and `step` and `wait` take `screenshot` to capture the frame
+after they finish. Each reply lists new warnings and errors from the game log.
+
+On Windows the game runs in a job object tied to the MCP server, so closing
+Claude Code never leaves a hidden game running.

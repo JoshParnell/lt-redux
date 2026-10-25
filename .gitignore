@@ -7,6 +7,8 @@
 /target/
 /target-immediate/
 /expand.rs
+/tools/ltr-mcp/.venv/
+__pycache__/
 
 # Logs
 /logs/

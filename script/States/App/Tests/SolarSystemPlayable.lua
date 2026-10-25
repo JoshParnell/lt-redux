@@ -87,6 +87,7 @@ function SolarSystemPlayable:buildScene(seed)
     self.timer = DeltaTimer("SolarSystemPlayable")
 
     self.world = Physics.Create()
+    AutoPilotSystem:setWorld(self.world)
 
     self:createSkybox()
     self:generateSolarSystem()

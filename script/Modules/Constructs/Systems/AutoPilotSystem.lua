@@ -46,6 +46,12 @@ function AutoPilotSystem:engagePosition(shipEntity, pos, arrivalRange, parentEnt
     Log.Info("AutoPilot: engaged to position")
 end
 
+--- Physics world searched for obstacles; without one the autopilot flies straight at its target.
+---@param world Physics|nil
+function AutoPilotSystem:setWorld(world)
+    self.world = world
+end
+
 --- Disengage autopilot
 ---@param shipEntity Entity
 function AutoPilotSystem:disengage(shipEntity)
@@ -119,6 +125,53 @@ function AutoPilotSystem:getDistanceAndSpeed(shipEntity)
     local dy = targetPos.y - shipPos.y
     local dz = targetPos.z - shipPos.z
     return math.sqrt(dx * dx + dy * dy + dz * dz), speed
+end
+
+--- Nearest body whose clearance sphere the straight path ahead passes through.
+--- Skips the ship and its parts, the target, and any body whose clearance holds
+--- the target point (the ship has to get close to that one anyway).
+---@param world Physics
+---@param rb RigidBody ship
+---@param targetRb RigidBody|nil
+---@param targetPos Position
+---@param dirX number path direction (unit)
+---@param dirY number
+---@param dirZ number
+---@param length number how far ahead to look
+---@return RigidBody|nil obstacle
+---@return number clearance radius around its center to steer outside of
+---@return number distance along the path to its closest approach
+local function findObstacle(world, rb, targetRb, targetPos, dirX, dirY, dirZ, length)
+    local cfg = Config.game.autoPilot or {}
+    local margin = cfg.avoidMargin or 0.5
+    local pos = rb:getPos()
+    local shipRadius = rb:getBoundingRadius()
+
+    -- f32 sphere centre: coarse at system scale, so it only gathers candidates
+    local half = length * 0.5
+    local hits = world:sphereCast(Sphere(
+        pos.x + dirX * half, pos.y + dirY * half, pos.z + dirZ * half,
+        half + shipRadius + 1))
+
+    local nearest, nearestT, nearestClearance = nil, math.huge, 0
+    for i = 0, hits.hits_len - 1 do
+        local body = hits.hits[i]
+        if body ~= rb and body ~= targetRb and body:getParentBody() ~= rb then
+            local c = body:getPos()
+            local clearance = body:getBoundingRadius() * (1 + margin) + shipRadius
+            local cx, cy, cz = c.x - pos.x, c.y - pos.y, c.z - pos.z
+            local t = Math.Clamp(cx * dirX + cy * dirY + cz * dirZ, 0, length)
+            local mx, my, mz = cx - dirX * t, cy - dirY * t, cz - dirZ * t
+            local tx, ty, tz = targetPos.x - c.x, targetPos.y - c.y, targetPos.z - c.z
+            if mx * mx + my * my + mz * mz < clearance * clearance
+                and tx * tx + ty * ty + tz * tz > clearance * clearance
+                and t < nearestT
+            then
+                nearest, nearestT, nearestClearance = body, t, clearance
+            end
+        end
+    end
+    return nearest, nearestClearance, nearestT
 end
 
 --- Exponential mapping for smooth control output (from legacy)
@@ -321,6 +374,37 @@ function AutoPilotSystem:update(dt, shipEntity)
         math.sqrt(2.0 * maxDecel * brakingDist),
         brakingDist * cfg.linearDrag * 0.5
     )
+
+    -- Steer around the nearest body in the next few seconds of travel, slow enough to stop short of it
+    ap.avoiding = nil
+    if self.world then
+        local apCfg = Config.game.autoPilot or {}
+        local lookAhead = math.min(steerDist, math.max(speed, cfg.maxSpeedGame) * (apCfg.avoidLookAhead or 5))
+        local targetRbCmp = targetEntity and targetEntity:get(PhysicsComponents.RigidBody)
+        local targetRb = targetRbCmp and targetRbCmp:getRigidBody()
+        local obstacle, clearance, obstacleT = findObstacle(
+            self.world, rb, targetRb, targetPos, dirX, dirY, dirZ, lookAhead)
+        if obstacle then
+            local c = obstacle:getPos()
+            local cx, cy, cz = c.x - shipPos.x, c.y - shipPos.y, c.z - shipPos.z
+            local along = cx * dirX + cy * dirY + cz * dirZ
+            -- Pass on the side the path already leans to; dead centre, go over the ship's top
+            local ox, oy, oz = dirX * along - cx, dirY * along - cy, dirZ * along - cz
+            local offLen = math.sqrt(ox * ox + oy * oy + oz * oz)
+            if offLen < clearance * 1e-3 then
+                local upAlong = up.x * dirX + up.y * dirY + up.z * dirZ
+                ox, oy, oz = up.x - dirX * upAlong, up.y - dirY * upAlong, up.z - dirZ * upAlong
+                offLen = math.sqrt(ox * ox + oy * oy + oz * oz)
+            end
+            local scale = clearance * 1.2 / offLen
+            local wx, wy, wz = cx + ox * scale, cy + oy * scale, cz + oz * scale
+            local wLen = math.sqrt(wx * wx + wy * wy + wz * wz)
+            dirX, dirY, dirZ = wx / wLen, wy / wLen, wz / wLen
+            desiredApproachSpeed = math.min(desiredApproachSpeed,
+                math.max(cfg.maxSpeedGame, obstacleT * cfg.linearDrag * 0.5))
+            ap.avoiding = obstacle
+        end
+    end
 
     -- Desired velocity = approach direction * approach speed + target's velocity (match orbit)
     local desVelX = dirX * desiredApproachSpeed + targetVelX

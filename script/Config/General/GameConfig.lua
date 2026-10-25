@@ -143,6 +143,8 @@ Config.game = {
         arrivalRange      = 500,    -- distance to target to consider arrived
         travelDriveDelay  = 5.0,    -- seconds before auto-engaging travel drive
         enableTravelDrive = true,   -- auto-engage travel drive during autopilot
+        avoidLookAhead    = 5.0,    -- seconds of travel checked ahead for obstacles
+        avoidMargin       = 0.5,    -- clearance beyond an obstacle's radius, as a fraction of it
     },
 
     chaseCamera = {

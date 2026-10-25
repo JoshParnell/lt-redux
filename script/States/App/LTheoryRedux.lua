@@ -301,6 +301,7 @@ function LimitTheoryRedux:returnToMainMenu()
     self.beltEntities = {}
     AsteroidFieldSystem:cleanup(self.world)
     RenderCoreSystem:setDebugPhysics(nil)
+    AutoPilotSystem:setWorld(nil)
 
     self.playerShip = nil
     self.stations = {}
@@ -338,6 +339,7 @@ function LimitTheoryRedux:startGame(seed)
     self.world = Physics.Create()
     self.constructManager = ConstructManager(Registry, self.world)
     RenderCoreSystem:setDebugPhysics(self.world)
+    AutoPilotSystem:setWorld(self.world)
 
     self:createSkybox()
     self:generateUniverse()

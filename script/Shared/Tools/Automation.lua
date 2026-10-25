@@ -192,52 +192,110 @@ function Automation.placeNear(target, altitude)
     return Automation.aimAt(target)
 end
 
---- Start `action` on the player ship now, suspending its current action until it finishes.
----@param action Action
-function Automation.push(action)
-    ActionSystem:push(Automation.ship(), action)
+--- Orders below act on `ship`, an entity or name text, or the player ship when omitted.
+---@param ship Entity|string|nil
+---@return Entity
+local function orderable(ship)
+    return ship and resolve(ship) or Automation.ship()
 end
 
---- Run `action` on the player ship after the actions it already has.
+--- Start `action` now, suspending the ship's current action until it finishes.
 ---@param action Action
-function Automation.queue(action)
-    ActionSystem:queue(Automation.ship(), action)
+---@param ship Entity|string|nil
+function Automation.push(action, ship)
+    ActionSystem:push(orderable(ship), action)
+end
+
+--- Run `action` after the actions the ship already has.
+---@param action Action
+---@param ship Entity|string|nil
+function Automation.queue(action, ship)
+    ActionSystem:queue(orderable(ship), action)
 end
 
 --- Queue a FlyTo, flown by the game's autopilot. It arrives at 1.5x the target's radius from
 --- its center (at least 50 units).
 ---@param target Entity|string
+---@param ship Entity|string|nil
 ---@return string[] actions
-function Automation.flyTo(target)
-    Automation.queue(Actions.FlyTo(resolve(target)))
-    return Automation.actions()
+function Automation.flyTo(target, ship)
+    Automation.queue(Actions.FlyTo(resolve(target)), ship)
+    return Automation.actions(ship)
 end
 
---- Queue turning the player ship to face `target`.
+--- Queue turning to face `target`.
 ---@param target Entity|string
+---@param ship Entity|string|nil
 ---@return string[] actions
-function Automation.face(target)
-    Automation.queue(Actions.Face(resolve(target)))
-    return Automation.actions()
+function Automation.face(target, ship)
+    Automation.queue(Actions.Face(resolve(target)), ship)
+    return Automation.actions(ship)
 end
 
 --- Queue holding still for `seconds` of game time.
 ---@param seconds number
+---@param ship Entity|string|nil
 ---@return string[] actions
-function Automation.wait(seconds)
-    Automation.queue(Actions.Wait(seconds))
-    return Automation.actions()
+function Automation.wait(seconds, ship)
+    Automation.queue(Actions.Wait(seconds), ship)
+    return Automation.actions(ship)
 end
 
----@return string[] the player ship's actions, the running one first
-function Automation.actions()
-    return ActionSystem:getNames(Automation.ship())
+--- Queue circling `target` at `radius` from its center, for `seconds` or until stopped.
+---@param target Entity|string
+---@param radius number
+---@param seconds number|nil
+---@param ship Entity|string|nil
+---@return string[] actions
+function Automation.orbit(target, radius, seconds, ship)
+    Automation.queue(Actions.Orbit(resolve(target), radius, seconds), ship)
+    return Automation.actions(ship)
 end
 
---- True once the player ship has no actions left; wait on `Automation.idle()`.
+---@param ship Entity|string|nil
+---@return string[] the ship's actions, the running one first
+function Automation.actions(ship)
+    return ActionSystem:getNames(orderable(ship))
+end
+
+--- True once the ship has no actions left; wait on `Automation.idle()`.
+---@param ship Entity|string|nil
 ---@return boolean
-function Automation.idle()
-    return not ActionSystem:isBusy(Automation.ship())
+function Automation.idle(ship)
+    return not ActionSystem:isBusy(orderable(ship))
+end
+
+--- A position `distance` from `center` at `degrees` around its horizontal plane, `height` above it.
+---@param center Entity|string
+---@param distance number
+---@param degrees number|nil
+---@param height number|nil
+---@return Position
+function Automation.around(center, distance, degrees, height)
+    local c = requireBody(resolve(center)):getPos()
+    local a = math.rad(degrees or 0)
+    return Position(c.x + math.cos(a) * distance, c.y + (height or 0), c.z + math.sin(a) * distance)
+end
+
+--- Spawn a station, labelled on the HUD and findable by `label`.
+---@param position Position
+---@param label string
+---@return Entity
+function Automation.spawnStation(position, label)
+    return game():createStation(position, label)
+end
+
+--- Spawn a ship that can take orders, labelled on the HUD and findable by `label`.
+---@param position Position
+---@param label string
+---@param shipType integer|nil Enums.ShipType, Fighter by default
+---@param scale number|nil hull scale
+---@return Entity
+function Automation.spawnShip(position, label, shipType, scale)
+    local app = game()
+    local ship = app:createShip(position, shipType, scale).root
+    table.insert(app.labeledEntities, { entity = ship, label = label })
+    return ship
 end
 
 ---@return table
@@ -255,10 +313,12 @@ function Automation.autopilot()
     }
 end
 
---- Clear the player ship's actions and disengage its autopilot.
-function Automation.stop()
-    ActionSystem:clear(Automation.ship())
-    AutoPilotSystem:disengage(Automation.ship())
+--- Clear the ship's actions and disengage its autopilot.
+---@param ship Entity|string|nil
+function Automation.stop(ship)
+    ship = orderable(ship)
+    ActionSystem:clear(ship)
+    AutoPilotSystem:disengage(ship)
 end
 
 --- Name of the key bound to an input action such as "ShipActions.Dock" (modules in

@@ -163,20 +163,25 @@ entities or text matched against entity names, nearest first (`"Planet"`,
 | `nav(target)` | Distance to the target's surface, speed, and the target's direction in the ship's frame |
 | `aimAt(target)` | Turn the ship to face the target instantly |
 | `placeNear(target, altitude)` | Move the ship to `altitude` above the target's surface, facing it |
-| `flyTo(target)` | Queue a FlyTo action, flown by the game's autopilot |
-| `face(target)` | Queue turning the ship to face the target |
-| `wait(seconds)` | Queue holding still for `seconds` of game time |
-| `push(action)`, `queue(action)` | Interrupt with, or queue, any action from `Automation.Actions` |
-| `actions()` | The ship's actions, the running one first |
-| `idle()` | True once the ship has no actions left |
-| `autopilot()` | Autopilot state, including whether it's steering around an obstacle |
-| `stop()` | Clear the ship's actions and disengage the autopilot |
+| `flyTo(target, ship)` | Queue a FlyTo action, flown by the game's autopilot |
+| `face(target, ship)` | Queue turning the ship to face the target |
+| `wait(seconds, ship)` | Queue holding still for `seconds` of game time |
+| `orbit(target, radius, seconds, ship)` | Queue circling the target, flying there first if far away |
+| `push(action, ship)`, `queue(action, ship)` | Interrupt with, or queue, any action from `Automation.Actions` |
+| `actions(ship)` | The ship's actions, the running one first |
+| `idle(ship)` | True once the ship has no actions left |
+| `stop(ship)` | Clear the ship's actions and disengage its autopilot |
+| `autopilot()` | Player autopilot state, including whether it's steering around an obstacle |
+| `around(center, distance, degrees, height)` | A position on a horizontal circle around an entity |
+| `spawnStation(position, label)` | Spawn a station, labelled and findable by `label` |
+| `spawnShip(position, label, shipType, scale)` | Spawn a ship that takes orders, labelled and findable by `label` |
 | `keyFor(action, negative)` | Name of the key bound to an input action, as the `action` tool uses |
 
-`placeNear` and `aimAt` set up a scene instantly. `flyTo`, `face` and `wait`
-use the game's own action stack, the same orders an NPC would run, so a
-sequence reads in order: `Automation.flyTo('Station 1')`, then
-`Automation.wait(2)`, then wait on `Automation.idle()`.
+`placeNear` and `aimAt` set up a scene instantly. The orders use the game's
+own action stack, so a sequence reads in order: `Automation.flyTo('Station 1')`,
+then `Automation.wait(2)`, then wait on `Automation.idle()`. Orders take an
+optional `ship`, an entity or name text, and act on the player ship without
+one; spawned ships fly their orders on their own.
 
 ### UI
 

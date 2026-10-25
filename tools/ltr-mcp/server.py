@@ -51,11 +51,14 @@ Drives Limit Theory Redux for testing changes. Typical loop: build, launch, act
   locals or rawset(_G, ...). Results come back as JSON.
 - lua and wait code can use the Automation helpers (script/Shared/Tools/Automation.lua):
   state(), ship(), entities{match=, within=, limit=}, find(text), nav(target),
-  aimAt(target), placeNear(target, altitude), autopilot(), and the ship's action
-  stack: flyTo(target), face(target), wait(seconds) queue actions in order,
-  idle() and actions() report them, stop() clears them. Targets are entities or
-  name text such as "Planet" or "Station 1". Prefer flyTo or placeNear over
-  steering by hand, then wait on Automation.idle().
+  aimAt(target), placeNear(target, altitude), autopilot(), and the action stack:
+  flyTo(target), face(target), wait(seconds), orbit(target, radius, seconds)
+  queue actions in order, idle() and actions() report them, stop() clears them.
+  Orders take an optional last argument naming another ship. Spawn with
+  spawnStation(around(center, distance, degrees), label) and
+  spawnShip(position, label, shipType, scale). Targets are entities or name text
+  such as "Planet" or "Station 1". Prefer flyTo or placeNear over steering by
+  hand, then wait on Automation.idle().
 - Every reply starts with the frame, game time and clock, and lists new
   warnings and errors from the game log.
 - Rebuild (build) after changing Rust code; Lua changes only need a relaunch.

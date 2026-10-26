@@ -2,6 +2,7 @@
     If Flags not set in Main.cpp set them to false or 0
 ]]
 if __debug__ == nil then __debug__ = false end
+if __shipping__ == nil then __shipping__ = false end
 if __checklevel__ == nil then __checklevel__ = 0 end
 if __embedded__ == nil then __embedded__ = false end
 

@@ -10,6 +10,13 @@ fn main() {
     let phx_version = env::var("PHX_VERSION").unwrap_or_else(|_| "0.0.0".to_string());
     println!("cargo::rustc-env=PHX_VERSION={phx_version}");
 
+    // Only the release workflow sets PHX_SHIPPING; shipping builds hide developer-only features.
+    println!("cargo::rustc-check-cfg=cfg(shipping)");
+    println!("cargo::rerun-if-env-changed=PHX_SHIPPING");
+    if env::var("PHX_SHIPPING").is_ok_and(|v| v == "1") {
+        println!("cargo::rustc-cfg=shipping");
+    }
+
     use std::str::FromStr;
 
     // Generate GL bindings.

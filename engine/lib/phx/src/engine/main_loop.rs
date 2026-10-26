@@ -61,6 +61,7 @@ impl ApplicationHandler for MainLoop {
             let globals = lua.globals();
 
             globals.set("__debug__", cfg!(debug_assertions)).unwrap();
+            globals.set("__shipping__", cfg!(shipping)).unwrap();
             globals.set("__embedded__", true).unwrap();
             globals.set("__checklevel__", 0 as u64).unwrap();
 

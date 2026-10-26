@@ -28,7 +28,31 @@ local settingsCategoryNames = { { "GENERAL", "General" },
     { "GRAPHICS",  "Graphics" },
     { "INTERFACE", "Interface" },
     { "CONTROLS",  "Controls" },
-    { "KEYBINDS",  "Keybinds" } }
+    { "KEYBINDS",  "Keybinds" },
+    { "DEV",       "Developer" } } -- "DEVELOPER" overflows the heading at 720p
+
+-- Ordered for the dropdown; LimitTheory is left out because the tonemap shader has no mode for it
+local tonemapModes = {
+    Enums.Tonemappers.Linear,
+    Enums.Tonemappers.Reinhard,
+    Enums.Tonemappers.ACES,
+    Enums.Tonemappers.Filmic,
+    Enums.Tonemappers.Uncharted2,
+    Enums.Tonemappers.Lottes,
+    Enums.Tonemappers.Uchimura,
+    Enums.Tonemappers.GranTurismo,
+    Enums.Tonemappers.NarkowiczACES,
+    Enums.Tonemappers.ReinhardExt,
+    Enums.Tonemappers.ReinhardLum,
+    Enums.Tonemappers.AgX,
+    Enums.Tonemappers.Illustris
+}
+
+local function getTonemapModeIndex()
+    for i, mode in ipairs(tonemapModes) do
+        if mode == Config.render.postFx.tonemap.mode then return i end
+    end
+end
 
 local function getLayoutContainerWidthPercentage() --todo: needs replacement with a more sophisticated layout system
     return GameState.render.resX / 1600 * 170 * 2 / GameState.render.resX
@@ -64,6 +88,10 @@ end
 
 local function switchToKeybindSettings()
     settingsCategory = 6
+end
+
+local function switchToDeveloperSettings()
+    settingsCategory = 7
 end
 
 local function getSettingsCategoryText()
@@ -494,6 +522,61 @@ local function settingsKeybinds()
     }
 end
 
+local developerSettings
+
+-- Built once, unlike the other categories, so the dropdown keeps its state between frames.
+-- Columns are Containers because a Grid draws nothing when it has a single child.
+---@return UIComponentContainer
+local function settingsDeveloper()
+    developerSettings = developerSettings or UIComponent.Container {
+        align = { AlignHorizontal.Stretch, AlignVertical.Stretch },
+        childrenAlign = { AlignHorizontal.Center, AlignVertical.Center },
+        padding = { 0, 0 },
+        margin = { 80, 0 },
+        widthInLayout = getRemainingWidthPercentage,
+        layoutType = GuiLayoutType.Vertical,
+        contents = {
+            UILayout.Grid {
+                align = { AlignHorizontal.Stretch, AlignVertical.Center },
+                stackDirection = GuiLayoutType.Horizontal,
+                contents = {
+                    UIComponent.Container {
+                        align = { AlignHorizontal.Center, AlignVertical.Center },
+                        widthInLayout = 0.35, -- 35% of the parent grid width
+                        layoutType = GuiLayoutType.Vertical,
+                        contents = {
+                            UIComponent.Text {
+                                text = "Tonemapper",
+                                size = 24,
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Left, AlignVertical.Center }
+                            }
+                        }
+                    },
+                    UIComponent.Container {
+                        align = { AlignHorizontal.Center, AlignVertical.Center },
+                        widthInLayout = 0.65, -- 65% of the parent grid width
+                        layoutType = GuiLayoutType.Vertical,
+                        contents = {
+                            UIComponent.Dropdown {
+                                size = ResponsiveSize(300, 20),
+                                font = { name = "Unageo-Medium", size = 20 },
+                                align = { AlignHorizontal.Center, AlignVertical.Center },
+                                sound = Config.audio.sounds.click,
+                                toolTip = function() return "Curve that maps HDR scene color to the display." end,
+                                selections = tonemapModes,
+                                selectedIndex = getTonemapModeIndex,
+                                callback = function(i) Config.render.postFx.tonemap.mode = tonemapModes[i] end
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return developerSettings
+end
+
 ---@return UIComponentContainer
 local function settingsSwap()
     if settingsCategory == 2 then
@@ -506,6 +589,8 @@ local function settingsSwap()
         return settingsControls()
     elseif settingsCategory == 6 then
         return settingsKeybinds()
+    elseif settingsCategory == 7 then
+        return settingsDeveloper()
     else
         return settingsGeneral()
     end
@@ -589,6 +674,14 @@ local settingsGrid = UILayout.Grid {
                             size = ResponsiveSize(300, 60, true),
                             font = { name = "Unageo-Medium", size = 24 },
                             callback = switchToKeybindSettings,
+                            align = { AlignHorizontal.Center, AlignVertical.Center }
+                        },
+                        UIComponent.Button_MainMenu {
+                            visible = not __shipping__,
+                            title = settingsCategoryNames[7][2],
+                            size = ResponsiveSize(300, 60, true),
+                            font = { name = "Unageo-Medium", size = 24 },
+                            callback = switchToDeveloperSettings,
                             align = { AlignHorizontal.Center, AlignVertical.Center }
                         },
                         UIComponent.Button_MainMenu {

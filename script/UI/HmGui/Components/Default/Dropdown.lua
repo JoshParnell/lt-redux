@@ -29,6 +29,7 @@ local meta = {
 ---@field selectedIndex number|nil
 ---@field selections table
 ---@field visible boolean
+---@field size ResponsiveSize|nil
 ---@field width number
 ---@field height number
 ---@field padding { paddingX: number, paddingY: number }|nil
@@ -66,8 +67,9 @@ function Dropdown:new(args)
     newDropdown.state = UICore.ComponentState {
         visible = args.visible,
         lastIndex = args.lastIndex,
-        selectedIndex = args.selectedIndex or 1,
+        selectedIndex = args.selectedIndex,
         selections = args.selections or {},
+        size = args.size,
         width = args.width,
         height = args.height,
         padding = args.padding,
@@ -110,15 +112,23 @@ function Dropdown:new(args)
             return
         end
 
+        -- The list holds the selection, so seed it from selectedIndex until one is clicked
+        local listSelector = self.state.listSelector()
+        if not listSelector.state.selectedIndex and self.state.selectedIndex then
+            listSelector.state.selectedIndex = self.state.selectedIndex()
+        end
+
         -- Set the dropdown text that is displayed when no selection has yet been made
         local selectedText = "--Select--"
-        if self.state.listSelector().state.selectedIndex then
-            selectedText = self.state.selections()[self.state.listSelector().state.selectedIndex]
+        if listSelector.state.selectedIndex then
+            selectedText = self.state.selections()[listSelector.state.selectedIndex]
         end
 
         -- main dropdown area
         Gui:beginHorizontalContainer()
         Gui:setAlignment(self.state.align()[1], self.state.align()[2])
+        -- Only the width is fixed; the height follows the font
+        if self.state.size then Gui:setFixedWidth(self.state.size().x) end
         Gui:setBorderWidth(1)
         Gui:setBorderColor(Color(1, 1, 1, 1))
         Gui:setPadding(1, 1)

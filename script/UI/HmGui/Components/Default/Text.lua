@@ -60,6 +60,8 @@ function Text:new(args)
 
         Gui:beginStackContainer()
         Gui:setAlignment(self.state.align()[1], self.state.align()[2])
+        -- Text is measured down to its baseline, so clipping here cuts off descenders
+        Gui:setClipping(false)
 
         if self.state.width then Gui:setFixedWidth(self.state.width()) end
         if self.state.height then Gui:setFixedHeight(self.state.height()) end

@@ -247,12 +247,6 @@ local function settingsGraphics()
                                 align = { AlignHorizontal.Left, AlignVertical.Center }
                             },
                             UIComponent.Text {
-                                text = "Bloom Radius",
-                                size = 24,
-                                margin = { 0, 14 },
-                                align = { AlignHorizontal.Left, AlignVertical.Center }
-                            },
-                            UIComponent.Text {
                                 text = "Exposure",
                                 size = 24,
                                 margin = { 0, 14 },
@@ -314,22 +308,6 @@ local function settingsGraphics()
                                 toolTip = function() return "Turns the glow around bright objects off and on." end,
                                 currentValue = function() return GameState.render.bloomEnabled end,
                                 callback = function(v) GameState.render.bloomEnabled = v end
-                            },
-                            UIComponent.Slider {
-                                size = ResponsiveSize(300, 20),
-                                margin = { 0, 14 },
-                                align = { AlignHorizontal.Center, AlignVertical.Center },
-                                sound = Config.audio.sounds.click,
-                                toolTip = function()
-                                    return
-                                    "How far the bloom glow spreads.\nLarger values cost more GPU time."
-                                end,
-                                increment = 8,
-                                minValue = 8,
-                                maxValue = 256,
-                                currentValue = GameState.render.bloomRadius,
-                                -- Rounded since slider steps can land just off an integer
-                                callback = function(v) GameState.render.bloomRadius = math.floor(v + 0.5) end
                             },
                             UIComponent.Slider {
                                 size = ResponsiveSize(300, 20),
@@ -542,8 +520,7 @@ end
 
 local developerSettings
 
--- Built once, unlike the other categories, so the dropdown keeps its state between frames.
--- Columns are Containers because a Grid draws nothing when it has a single child.
+-- Built once, unlike the other categories, so the dropdown keeps its state between frames
 ---@return UIComponentContainer
 local function settingsDeveloper()
     developerSettings = developerSettings or UIComponent.Container {
@@ -558,7 +535,7 @@ local function settingsDeveloper()
                 align = { AlignHorizontal.Stretch, AlignVertical.Center },
                 stackDirection = GuiLayoutType.Horizontal,
                 contents = {
-                    UIComponent.Container {
+                    UILayout.Grid {
                         align = { AlignHorizontal.Center, AlignVertical.Center },
                         widthInLayout = 0.35, -- 35% of the parent grid width
                         layoutType = GuiLayoutType.Vertical,
@@ -568,10 +545,16 @@ local function settingsDeveloper()
                                 size = 24,
                                 margin = { 0, 14 },
                                 align = { AlignHorizontal.Left, AlignVertical.Center }
+                            },
+                            UIComponent.Text {
+                                text = "Bloom Radius",
+                                size = 24,
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Left, AlignVertical.Center }
                             }
                         }
                     },
-                    UIComponent.Container {
+                    UILayout.Grid {
                         align = { AlignHorizontal.Center, AlignVertical.Center },
                         widthInLayout = 0.65, -- 65% of the parent grid width
                         layoutType = GuiLayoutType.Vertical,
@@ -585,6 +568,22 @@ local function settingsDeveloper()
                                 selections = tonemapModes,
                                 selectedIndex = getTonemapModeIndex,
                                 callback = function(i) Config.render.postFx.tonemap.mode = tonemapModes[i] end
+                            },
+                            UIComponent.Slider {
+                                size = ResponsiveSize(300, 20),
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Center, AlignVertical.Center },
+                                sound = Config.audio.sounds.click,
+                                toolTip = function()
+                                    return
+                                    "How far the bloom glow spreads.\nLarger values cost more GPU time."
+                                end,
+                                increment = 8,
+                                minValue = 8,
+                                maxValue = 256,
+                                currentValue = function() return GameState.render.bloomRadius end,
+                                -- Rounded since slider steps can land just off an integer
+                                callback = function(v) GameState.render.bloomRadius = math.floor(v + 0.5) end
                             }
                         }
                     }

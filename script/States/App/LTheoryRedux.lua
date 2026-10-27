@@ -224,11 +224,7 @@ function LimitTheoryRedux:cleanupMenuBackground()
         Registry:destroyEntity(self.universe, Enums.Registry.EntityDestroyMode.DestroyChildren)
     end
 
-    -- The skybox entity is standalone (not attached to the universe).
-    if self.skybox then
-        Registry:destroyEntity(self.skybox, Enums.Registry.EntityDestroyMode.DestroyChildren)
-        self.skybox = nil
-    end
+    self:destroySkybox()
 
     self.universe = nil
     self.planets = {}
@@ -307,6 +303,8 @@ function LimitTheoryRedux:returnToMainMenu()
         end
         Registry:destroyEntity(station, Enums.Registry.EntityDestroyMode.DestroyChildren)
     end
+
+    self:destroySkybox()
 
     self.starEntity = nil
     self.beltEntities = {}
@@ -402,7 +400,7 @@ function LimitTheoryRedux:createSkybox()
     self.skybox = SkyboxEntity(self.seed, function(entity, blendMode)
         local placeholder = entity:get(CoreComponents.Empty)
         if not placeholder then
-            placeholder = entity:add(CoreComponents.Empty)
+            placeholder = entity:add(CoreComponents.Empty())
         end
 
         if not placeholder.envMap then
@@ -437,6 +435,19 @@ function LimitTheoryRedux:createSkybox()
             shader:stop()
         end
     end)
+end
+
+--- The skybox entity is standalone (not attached to the universe).
+function LimitTheoryRedux:destroySkybox()
+    if not self.skybox then return end
+
+    -- Its first draw pushed the nebula maps; without popping them each new game would leak one
+    if self.skybox:get(CoreComponents.Empty) then
+        ShaderVar.Pop('envMap')
+        ShaderVar.Pop('irMap')
+    end
+    Registry:destroyEntity(self.skybox, Enums.Registry.EntityDestroyMode.DestroyChildren)
+    self.skybox = nil
 end
 
 --- Generate the universe through UniverseManager + SolarSystemVisualizer.

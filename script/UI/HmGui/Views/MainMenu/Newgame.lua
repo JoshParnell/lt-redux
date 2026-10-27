@@ -7,8 +7,6 @@ local NewgameView = UICore.View {
 local UIRouter = require("UI.HmGui.UICore.UIRouter")
 ---@type ResponsiveSize
 local ResponsiveSize = require("Types.ResponsiveSize")
----@type RandomNumberGenerator
-local rng = RNG.FromTime()
 
 local seeds = {
     -- TODO: replace with proper list
@@ -63,9 +61,9 @@ local function switchToMainScreen()
     UIRouter:getCurrentPage():setView("Main")
 end
 
----@param seed integer|nil
+---@param seed integer|nil nil lets the app draw one from the same RNG as the menu's system
 local function newGame(seed)
-    local seed = seed or __seed__ or rng:get64()
+    local seed = seed or __seed__
 
     -- Route through the app state's scene builder (UniverseManager +
     -- Rulesets + SolarSystemVisualizer) via the seam the state exposes
@@ -382,7 +380,7 @@ local newgameGrid = UILayout.Grid {
                     size = ResponsiveSize(300, 60),
                     font = { name = "Unageo-Medium", size = 24 },
                     toolTip = function() return "Press to start a new game with a random seed." end,
-                    callback = function() newGame(rng:get64()) end,
+                    callback = function() newGame() end,
                 }
             }
         }

@@ -7,8 +7,6 @@ local LoadgameView = UICore.View {
 local UIRouter = require("UI.HmGui.UICore.UIRouter")
 ---@type ResponsiveSize
 local ResponsiveSize = require("Types.ResponsiveSize")
----@type RandomNumberGenerator
-local rng = RNG.FromTime()
 
 local seeds = {
     -- TODO: replace with proper list
@@ -54,10 +52,8 @@ local function switchToMainScreen()
     UIRouter:getCurrentPage():setView("Main")
 end
 
----@param seed integer|nil
+---@param seed integer|nil nil lets the app draw one from the same RNG as the menu's system
 local function newGame(seed)
-    local seed = seed or rng:get64()
-
     if GameState.startGame then
         GameState.startGame(seed)
     end

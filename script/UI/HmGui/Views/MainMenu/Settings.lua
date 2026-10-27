@@ -251,6 +251,12 @@ local function settingsGraphics()
                                 size = 24,
                                 margin = { 0, 14 },
                                 align = { AlignHorizontal.Left, AlignVertical.Center }
+                            },
+                            UIComponent.Text {
+                                text = "Exposure",
+                                size = 24,
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Left, AlignVertical.Center }
                             }
                         }
                     },
@@ -324,6 +330,18 @@ local function settingsGraphics()
                                 currentValue = GameState.render.bloomRadius,
                                 -- Rounded since slider steps can land just off an integer
                                 callback = function(v) GameState.render.bloomRadius = math.floor(v + 0.5) end
+                            },
+                            UIComponent.Slider {
+                                size = ResponsiveSize(300, 20),
+                                margin = { 0, 14 },
+                                align = { AlignHorizontal.Center, AlignVertical.Center },
+                                sound = Config.audio.sounds.click,
+                                toolTip = function() return "Adjusts the overall brightness of the scene." end,
+                                increment = 0.05,
+                                minValue = 0.1,
+                                maxValue = 3,
+                                currentValue = Config.render.postFx.tonemap.exposure,
+                                callback = function(v) Config.render.postFx.tonemap.exposure = v end
                             }
                         }
                     }
